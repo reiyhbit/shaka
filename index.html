@@ -18,7 +18,7 @@
    <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
    <link href="https://fonts.googleapis.com/css2?family=Rethink+Sans:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Text:wght@400;500;700&display=swap" rel="stylesheet">
-   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500;700&display=swap" rel="stylesheet">
+   <link href="https://fonts.googleapis.css2?family=Google+Sans+Code:wght@400;500;700&display=swap" rel="stylesheet">
    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
    <script src="https://unpkg.com/mux.js@5.10.0/dist/mux.js"></script>
    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.9/dist/shaka-player.ui.min.js"></script>
@@ -105,6 +105,7 @@
        border-radius: 0.75rem;
        overflow: hidden;
        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+       position: relative;
      }
 
      #video-container {
@@ -118,6 +119,7 @@
        height: auto;
        aspect-ratio: 16/9;
        display: block;
+       background: #000;
      }
 
      #channel-name-display {
@@ -267,6 +269,7 @@
        border-radius: 0.5rem;
        margin-top: 1rem;
        font-size: 0.875rem;
+       white-space: pre-wrap;
      }
 
      .stats-panel {
@@ -346,16 +349,23 @@
        display: none;
        text-align: center;
        padding: 1rem;
+       position: absolute;
+       top: 50%;
+       left: 50%;
+       transform: translate(-50%, -50%);
+       background: rgba(0, 0, 0, 0.8);
+       border-radius: 0.5rem;
+       z-index: 10;
      }
 
      .spinner {
        border: 2px solid #333;
        border-top: 2px solid var(--primary-color);
        border-radius: 50%;
-       width: 20px;
-       height: 20px;
+       width: 30px;
+       height: 30px;
        animation: spin 1s linear infinite;
-       margin: 0 auto;
+       margin: 0 auto 0.5rem;
      }
 
      @keyframes spin {
@@ -443,6 +453,25 @@
        margin-bottom: 1rem;
        font-size: 0.875rem;
      }
+
+     .stream-debug {
+       background: #2d2d2d;
+       border-radius: 0.5rem;
+       padding: 1rem;
+       margin-top: 1rem;
+       font-size: 0.75rem;
+       display: none;
+     }
+
+     .debug-toggle {
+       background: none;
+       border: none;
+       color: var(--text-secondary);
+       font-size: 0.75rem;
+       cursor: pointer;
+       text-decoration: underline;
+       margin-top: 0.5rem;
+     }
    </style>
 </head>
 <body>
@@ -458,13 +487,13 @@
     <main class="grid-container">
       <div class="player-wrapper">
         <div id="video-container" data-shaka-player-container>
-          <video id="video" poster="assets/video_poster.svg" data-shaka-player autoplay></video>
+          <video id="video" poster="assets/video_poster.svg" data-shaka-player autoplay muted playsinline></video>
+          <div class="loading-spinner" id="loading-spinner">
+            <div class="spinner"></div>
+            <p>Loading stream...</p>
+          </div>
         </div>
         <h2 id="channel-name-display">Select a Channel to Play</h2>
-        <div class="loading-spinner" id="loading-spinner">
-          <div class="spinner"></div>
-          <p>Loading stream...</p>
-        </div>
         <div class="stats-panel" id="stats-panel" style="display: none;">
           <div class="stats-row">
             <span class="stats-label">Buffer Health:</span>
@@ -477,6 +506,25 @@
           <div class="stats-row">
             <span class="stats-label">Resolution:</span>
             <span class="stats-value" id="current-resolution">N/A</span>
+          </div>
+          <div class="stats-row">
+            <span class="stats-label">State:</span>
+            <span class="stats-value" id="player-state">Idle</span>
+          </div>
+        </div>
+        <button class="debug-toggle" id="debug-toggle">Show Debug Info</button>
+        <div class="stream-debug" id="stream-debug">
+          <div class="stats-row">
+            <span class="stats-label">Manifest URL:</span>
+            <span class="stats-value" id="debug-manifest">N/A</span>
+          </div>
+          <div class="stats-row">
+            <span class="stats-label">Stream Type:</span>
+            <span class="stats-value" id="debug-stream-type">N/A</span>
+          </div>
+          <div class="stats-row">
+            <span class="stats-label">Loaded:</span>
+            <span class="stats-value" id="debug-loaded">No</span>
           </div>
         </div>
       </div>
@@ -538,34 +586,6 @@
               <label for="manifestUri">Manifest URI</label>
               <input type="text" id="manifestUri" placeholder="Enter HLS or MPEG-DASH URI">
             </div>
-            <div class="drm-fields" style="display: none;">
-              <p style="font-size: 0.7rem; color: #888; margin-top: 1rem; margin-bottom: 0.5rem;">DRM (for MPEG-DASH only)</p>
-              <div class="input-group">
-                <label for="licenseTypeSelect">DRM Type</label>
-                <div class="select-wrapper">
-                  <select id="licenseTypeSelect">
-                      <option value="com.widevine.alpha" selected>License URL (com.widevine.alpha)</option>
-                      <option value="org.w3.clearkey">ClearKey (org.w3.clearkey)</option>
-                  </select>
-                </div>
-              </div>
-              <div id="license-url-container">
-                  <div class="input-group">
-                    <label for="licenseServerUrl">License Server URL</label>
-                    <input type="text" id="licenseServerUrl" placeholder="Enter license server URL">
-                  </div>
-              </div>
-              <div id="clearkey-container" style="display: none;">
-                  <div class="input-group">
-                    <label for="k1">Key ID (KID) in hex</label>
-                    <input type="text" id="k1" placeholder="Enter Key ID (hex)">
-                  </div>
-                  <div class="input-group">
-                    <label for="k2">Key in hex</label>
-                    <input type="text" id="k2" placeholder="Enter Key (hex)">
-                  </div>
-              </div>
-            </div>
             <button id="loadButton">Load Manual Input</button>
         </div>
         <div id="error-display"></div>
@@ -578,8 +598,8 @@
   <div id="toast" class="toast"></div>
 
   <footer class="site-footer">
-    <p>&copy; 2025 REIYH PROJECT. All Rights Reserved.</p>
-    <p>Reiyh Player</p>
+    <p>&copy; 2025 Project Dev. All Rights Reserved.</p>
+    <p>Powered by Shaka Player (4.16.9)</p>
   </footer>
 
   <script>
@@ -600,13 +620,6 @@
     const videoContainer = document.getElementById('video-container');
     const errorDisplay = document.getElementById('error-display');
     const manifestUriInput = document.getElementById('manifestUri');
-    const licenseServerUrlInput = document.getElementById('licenseServerUrl');
-    const licenseTypeSelect = document.getElementById('licenseTypeSelect');
-    const k1Input = document.getElementById('k1');
-    const k2Input = document.getElementById('k2');
-    const drmFieldsContainer = document.querySelector('.drm-fields');
-    const licenseUrlContainer = document.getElementById('license-url-container');
-    const clearkeyContainer = document.getElementById('clearkey-container');
     const channelSelector = document.getElementById('channelSelector');
     const channelNameDisplay = document.getElementById('channel-name-display');
     const loadingSpinner = document.getElementById('loading-spinner');
@@ -616,9 +629,12 @@
     const refreshPlaylistBtn = document.getElementById('refresh-playlist-btn');
     const playlistStatus = document.getElementById('playlist-status');
     const channelCount = document.getElementById('channel-count');
-
-    const menuToggleBtn = document.getElementById('menu-toggle-btn');
-    const floatingMenu = document.getElementById('floating-menu');
+    const debugToggle = document.getElementById('debug-toggle');
+    const streamDebug = document.getElementById('stream-debug');
+    const playerStateDisplay = document.getElementById('player-state');
+    const debugManifest = document.getElementById('debug-manifest');
+    const debugStreamType = document.getElementById('debug-stream-type');
+    const debugLoaded = document.getElementById('debug-loaded');
 
     // Enhanced M3U parsing with better error handling
     function parseM3U(data) {
@@ -716,7 +732,7 @@
 
     // Enhanced error handling
     function showError(message) {
-      console.error(message);
+      console.error('Stream Error:', message);
       errorDisplay.textContent = message;
       errorDisplay.style.display = 'block';
       showToast(message, 'error', 5000);
@@ -734,11 +750,14 @@
         playlistStatus.style.background = 'var(--warning-color)';
         channelSelector.innerHTML = '<option value="">Loading channels...</option>';
 
+        console.log('Fetching playlist from:', EMBEDDED_M3U_URL);
         const response = await fetch(EMBEDDED_M3U_URL);
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         
         const m3uData = await response.text();
+        console.log('Playlist data received, length:', m3uData.length);
         playlistData = parseM3U(m3uData);
+        console.log('Parsed channels:', playlistData.length);
         
         populatePlaylistChannels();
         isPlaylistLoaded = true;
@@ -752,12 +771,14 @@
         // Auto-select first channel if available
         if (playlistData.length > 0) {
           setTimeout(() => {
+            console.log('Auto-selecting first channel:', playlistData[0].name);
             channelSelector.value = 'playlist_0';
             onChannelSelect({ target: channelSelector });
-          }, 500);
+          }, 1000);
         }
         
       } catch (e) {
+        console.error('Failed to load playlist:', e);
         showError(`Failed to load playlist: ${e.message}`);
         playlistStatus.textContent = 'Failed';
         playlistStatus.style.background = 'var(--error-color)';
@@ -765,7 +786,7 @@
       }
     }
 
-    // Enhanced stream loading with better feedback
+    // Enhanced stream loading with better configuration
     async function loadStream(name) {
       const manifestUri = manifestUriInput.value.trim();
       const displayName = name || 'Manual Input';
@@ -776,51 +797,101 @@
         return;
       }
       
+      console.log('Loading stream:', displayName, 'URL:', manifestUri);
+      
       loadingSpinner.style.display = 'block';
       statsPanel.style.display = 'none';
       channelNameDisplay.textContent = `Loading: ${displayName}...`;
+      playerStateDisplay.textContent = 'Loading';
 
-      const config = { 
-        drm: {},
-        streaming: {
-          bufferingGoal: 30,
-          rebufferingGoal: 2
-        }
-      };
-
-      const selectedDrmType = licenseTypeSelect.value;
-
-      if (drmFieldsContainer.style.display === 'block' && selectedDrmType !== 'none') {
-        if (selectedDrmType === 'com.widevine.alpha') {
-          const licenseServerUrl = licenseServerUrlInput.value.trim();
-          if (licenseServerUrl) {
-            config.drm.servers = { [selectedDrmType]: licenseServerUrl };
-          }
-        } else if (selectedDrmType === 'org.w3.clearkey') {
-          const kid = k1Input.value.trim();
-          const key = k2Input.value.trim();
-          if (kid && key) {
-            config.drm.clearKeys = { [kid]: key };
-          }
-        }
-      }
-      
-      player.configure(config);
+      // Update debug info
+      debugManifest.textContent = manifestUri;
+      debugStreamType.textContent = manifestUri.includes('.m3u8') ? 'HLS' : 
+                                   manifestUri.includes('.mpd') ? 'DASH' : 'Unknown';
+      debugLoaded.textContent = 'No';
 
       try {
+        // Configure player for better streaming performance
+        player.configure({
+          streaming: {
+            bufferingGoal: 60,
+            rebufferingGoal: 10,
+            bufferBehind: 30,
+            ignoreTextStreamFailures: true,
+            retryParameters: {
+              maxAttempts: 5,
+              baseDelay: 1000,
+              backoffFactor: 2,
+              fuzzFactor: 0.5,
+              timeout: 30000
+            }
+          },
+          manifest: {
+            dash: {
+              ignoreMinBufferTime: true
+            },
+            retryParameters: {
+              maxAttempts: 3,
+              baseDelay: 1000,
+              backoffFactor: 2
+            }
+          },
+          abr: {
+            enabled: true,
+            defaultBandwidthEstimate: 500000,
+            switchInterval: 2
+          }
+        });
+
+        // Add event listeners for better debugging
+        player.addEventListener('loading', () => {
+          console.log('Player: Loading started');
+          playerStateDisplay.textContent = 'Loading';
+        });
+
+        player.addEventListener('loaded', () => {
+          console.log('Player: Loaded successfully');
+          playerStateDisplay.textContent = 'Loaded';
+        });
+
+        player.addEventListener('buffering', (event) => {
+          console.log('Player: Buffering', event.buffering);
+          playerStateDisplay.textContent = event.buffering ? 'Buffering' : 'Playing';
+        });
+
+        // Load the stream
         await player.load(manifestUri);
+        
+        console.log('Stream loaded successfully');
         channelNameDisplay.textContent = displayName;
         loadingSpinner.style.display = 'none';
         statsPanel.style.display = 'block';
+        debugLoaded.textContent = 'Yes';
+        playerStateDisplay.textContent = 'Playing';
+        
         showToast(`Now playing: ${displayName}`);
         
         // Update channel info
-        updateChannelInfo(displayName, manifestUri, selectedDrmType);
+        updateChannelInfo(displayName, manifestUri, 'none');
+        
+        // Try to play the video
+        try {
+          await video.play();
+          console.log('Video playback started successfully');
+        } catch (playError) {
+          console.warn('Autoplay failed, trying muted:', playError);
+          video.muted = true;
+          await video.play();
+          showToast('Video playing with sound muted due to browser restrictions');
+        }
         
       } catch (e) {
+        console.error('Stream loading failed:', e);
         onError({ detail: e });
         channelNameDisplay.textContent = `Failed to load: ${displayName}`;
         loadingSpinner.style.display = 'none';
+        playerStateDisplay.textContent = 'Error';
+        debugLoaded.textContent = 'No';
       }
     }
 
@@ -835,24 +906,28 @@
 
     // Enhanced statistics monitoring
     function updateStats() {
-      if (!player || !player.isBuffering()) return;
+      if (!player) return;
 
-      const buffering = player.isBuffering();
-      const bufferHealth = player.getBufferHealth();
-      const activeTracks = player.getVariantTracks().filter(track => track.active);
-      
-      if (activeTracks.length > 0) {
-        const track = activeTracks[0];
-        currentStreamStats.bitrate = Math.round(track.bandwidth / 1000);
-        currentStreamStats.resolution = `${track.width || 'N/A'}x${track.height || 'N/A'}`;
+      try {
+        const bufferHealth = player.getBufferHealth();
+        const activeTracks = player.getVariantTracks().filter(track => track.active);
+        
+        if (activeTracks.length > 0) {
+          const track = activeTracks[0];
+          currentStreamStats.bitrate = Math.round(track.bandwidth / 1000);
+          currentStreamStats.resolution = `${track.width || 'N/A'}x${track.height || 'N/A'}`;
+        }
+        
+        currentStreamStats.bufferHealth = bufferHealth.toFixed(1);
+        
+        // Update UI
+        document.getElementById('buffer-health').textContent = `${currentStreamStats.bufferHealth}s`;
+        document.getElementById('current-bitrate').textContent = `${currentStreamStats.bitrate} kbps`;
+        document.getElementById('current-resolution').textContent = currentStreamStats.resolution;
+        
+      } catch (e) {
+        // Ignore stats errors
       }
-      
-      currentStreamStats.bufferHealth = bufferHealth.toFixed(1);
-      
-      // Update UI
-      document.getElementById('buffer-health').textContent = `${currentStreamStats.bufferHealth}s`;
-      document.getElementById('current-bitrate').textContent = `${currentStreamStats.bitrate} kbps`;
-      document.getElementById('current-resolution').textContent = currentStreamStats.resolution;
     }
 
     // Initialize enhanced player with statistics
@@ -866,15 +941,9 @@
         player.addEventListener('error', onError);
         
         // Statistics monitoring
-        player.addEventListener('buffering', (event) => {
-          if (!event.buffering) {
-            updateStats();
-          }
-        });
-        
-        // Update stats periodically
         setInterval(updateStats, 1000);
         
+        console.log('Shaka Player initialized successfully');
       } else {
         showError('Your browser does not support Shaka Player.');
       }
@@ -895,27 +964,8 @@
       }
 
       if (channel) {
+        console.log('Selected channel:', displayName, 'URL:', channel.url);
         manifestUriInput.value = channel.url || '';
-        
-        if ((channel.licenseType === 'org.w3.clearkey' || (channel.k1 && channel.k2)) && channel.k1 && channel.k2) {
-            licenseTypeSelect.value = 'org.w3.clearkey';
-            k1Input.value = channel.k1;
-            k2Input.value = channel.k2;
-            licenseServerUrlInput.value = '';
-        } else if (channel.licenseType && channel.licenseKey) {
-            licenseTypeSelect.value = channel.licenseType;
-            licenseServerUrlInput.value = channel.licenseKey;
-            k1Input.value = '';
-            k2Input.value = '';
-        } else {
-            licenseTypeSelect.value = 'none';
-            licenseServerUrlInput.value = '';
-            k1Input.value = '';
-            k2Input.value = '';
-        }
-        
-        toggleDrmBlockVisibility();
-        updateDrmFieldVisibility(); 
         loadStream(displayName);
       }
     }
@@ -930,6 +980,7 @@
           const option = new Option(channel.name, `playlist_${index}`);
           channelSelector.appendChild(option);
         });
+        console.log('Populated', playlistData.length, 'channels');
       } else {
         showError('No channels found in the playlist.');
       }
@@ -953,6 +1004,21 @@
       }
     }
 
+    function onError(event) {
+      const error = event.detail;
+      console.error('Shaka Player Error:', error);
+      
+      let errorMessage = `Error: ${error.code}\nCategory: ${error.category}\nSeverity: ${error.severity}`;
+      
+      if (error.data && error.data[0]) {
+        errorMessage += `\nData: ${JSON.stringify(error.data[0])}`;
+      }
+      
+      showError(errorMessage);
+      playerStateDisplay.textContent = 'Error';
+    }
+
+    // Rest of the functions remain the same...
     function renderMenu() {
       const floatingMenu = document.getElementById('floating-menu');
       if (floatingMenu) {
@@ -992,31 +1058,8 @@
               window.location.href = link.href;
             }
           });
-          item.addEventListener("contextmenu", event => {
-            event.preventDefault();
-          });
         });
       }
-    }
-
-    function toggleDrmBlockVisibility() {
-      const manifestUri = manifestUriInput.value.toLowerCase().trim();
-      const isMpd = manifestUri.includes('.mpd');
-      
-      if (drmFieldsContainer) {
-        drmFieldsContainer.style.display = isMpd ? 'block' : 'none';
-      }
-    }
-
-    function updateDrmFieldVisibility() {
-        const selectedType = licenseTypeSelect.value;
-        const isWidevine = selectedType === 'com.widevine.alpha';
-        const isNone = selectedType === 'none';
-
-        if (licenseUrlContainer && clearkeyContainer) {
-            licenseUrlContainer.style.display = isWidevine ? 'block' : 'none';
-            clearkeyContainer.style.display = !isWidevine && !isNone ? 'block' : 'none';
-        }
     }
 
     function handleRouting() {
@@ -1038,10 +1081,10 @@
 
     function switchInputMode(mode, pushState = true) {
       const isPlaylist = mode === 'playlist';
-      addModeContainer.style.display = isPlaylist ? 'block' : 'none';
-      manualModeContainer.style.display = isPlaylist ? 'none' : 'block';
-      addModeBtn.classList.toggle('active', isPlaylist);
-      manualModeBtn.classList.toggle('active', !isPlaylist);
+      document.getElementById('add-mode-container').style.display = isPlaylist ? 'block' : 'none';
+      document.getElementById('manual-mode-container').style.display = isPlaylist ? 'none' : 'block';
+      document.getElementById('add-mode-btn').classList.toggle('active', isPlaylist);
+      document.getElementById('manual-mode-btn').classList.toggle('active', !isPlaylist);
       updateSliderPosition();
 
       if (pushState) {
@@ -1056,17 +1099,11 @@
     }
 
     function updateSliderPosition() {
-      const activeButton = inputModeSwitcher.querySelector('button.active');
+      const activeButton = document.querySelector('.input-mode-switcher button.active');
       if (activeButton) {
-        inputModeSwitcher.style.setProperty('--slider-left', `${activeButton.offsetLeft}px`);
-        inputModeSwitcher.style.setProperty('--slider-width', `${activeButton.offsetWidth}px`);
+        document.querySelector('.input-mode-switcher').style.setProperty('--slider-left', `${activeButton.offsetLeft}px`);
+        document.querySelector('.input-mode-switcher').style.setProperty('--slider-width', `${activeButton.offsetWidth}px`);
       }
-    }
-
-    function onError(event) {
-      const error = event.detail;
-      console.error('Shaka Player Error:', error);
-      showError(`Error Code: ${error.code}\nCategory: ${error.category}`);
     }
 
     function toggleMenu() {
@@ -1084,9 +1121,12 @@
       document.getElementById('manual-mode-btn').addEventListener('click', () => switchInputMode('manual'));
       window.addEventListener('resize', updateSliderPosition);
       window.addEventListener('popstate', handleRouting);
-      manifestUriInput.addEventListener('input', toggleDrmBlockVisibility);
-      licenseTypeSelect.addEventListener('change', updateDrmFieldVisibility);
       
+      debugToggle.addEventListener('click', () => {
+        streamDebug.style.display = streamDebug.style.display === 'none' ? 'block' : 'none';
+        debugToggle.textContent = streamDebug.style.display === 'none' ? 'Show Debug Info' : 'Hide Debug Info';
+      });
+
       if (menuToggleBtn && floatingMenu) {
           menuToggleBtn.addEventListener('click', (event) => {
               event.stopPropagation();
@@ -1105,12 +1145,11 @@
         setupPlayerEventListeners();
         handleRouting(); 
         initPlayer();
-        toggleDrmBlockVisibility(); 
-        updateDrmFieldVisibility();
         renderMenu();
         updateSliderPosition();
         
         // AUTO-LOAD THE PLAYLIST IMMEDIATELY ON PAGE LOAD
+        console.log('Starting application...');
         loadEmbeddedPlaylist();
       }
     }
