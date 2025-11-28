@@ -1,144 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>One-File Stream Player</title>
-
-<!-- Shaka Player CDN -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.3.5/dist/controls.css">
-<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.3.5/dist/shaka-player.ui.js"></script>
-
-<style>
-    body { 
-        font-family: Arial; 
-        background:#121212; 
-        color:white; 
-        margin:0; 
-        padding:20px;
-    }
-    #video-container {
-        width:100%;
-        max-width:900px;
-        margin:auto;
-        border:2px solid #333;
-        border-radius:10px;
-        overflow:hidden;
-    }
-    input, select, button {
-        width:100%;
-        padding:10px;
-        margin:8px 0;
-        border-radius:5px;
-        border:none;
-        font-size:15px;
-    }
-    button {
-        background:#0af;
-        color:black;
-        font-weight:bold;
-        cursor:pointer;
-    }
-    #controls { 
-        max-width:900px; 
-        margin:20px auto;
-    }
-    #error { color:red; font-size:14px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Player (Based on Your Reference)</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #0d0d0d; color:#fff; margin:0; padding:20px; }
+        #player { width:100%; max-width:900px; background:#000; margin:20px auto; display:block; }
+        textarea { width:100%; height:160px; padding:10px; border-radius:6px; background:#1a1a1a; color:#fff; }
+        button { padding:10px 20px; margin-top:10px; background:#007bff; border:none; border-radius:5px; color:#fff; cursor:pointer; }
+        #channels { max-width:900px; margin:20px auto; }
+        .channel-item { background:#1c1c1c; padding:10px; border-radius:4px; margin-bottom:5px; cursor:pointer; }
+        .channel-item:hover { background:#2b2b2b; }
+    </style>
 </head>
-
 <body>
+<h2>IPTV Player (M3U Input)</h2>
+<p>Ilagay ang M3U playlist dito:</p>
+<textarea id="m3u"></textarea>
+<br>
+<button onclick="parseM3U()">LOAD PLAYLIST</button>
 
-<h2>One-File Stream Player</h2>
+<video id="player" controls autoplay></video>
 
-<div id="video-container" data-shaka-player-container>
-    <video id="video" autoplay muted data-shaka-player></video>
-</div>
-
-<div id="controls">
-    <label>Manifest URL (HLS / MPD)</label>
-    <input id="manifest" placeholder="https://converse.nathcreqtives.com/playlist.m3u">
-
-    <label>DRM Type</label>
-    <select id="drmType">
-        <option value="none">None</option>
-        <option value="com.widevine.alpha">Widevine</option>
-        <option value="org.w3.clearkey">ClearKey</option>
-    </select>
-
-    <input id="licenseUrl" placeholder="Widevine License URL" style="display:none;">
-    <input id="ck_kid" placeholder="ClearKey KID (hex)" style="display:none;">
-    <input id="ck_key" placeholder="ClearKey KEY (hex)" style="display:none;">
-
-    <button onclick="loadStream()">PLAY</button>
-    <p id="error"></p>
-</div>
+<div id="channels"></div>
 
 <script>
-let player;
+function parseM3U() {
+    const raw = document.getElementById('m3u').value.trim();
+    const lines = raw.split(/\r?\n/);
 
-document.addEventListener("DOMContentLoaded", () => {
-    shaka.polyfill.installAll();
+    let channels = [];
+    let temp = {};
 
-    if (!shaka.Player.isBrowserSupported()) {
-        showError("Your browser does not support Shaka Player.");
-        return;
-    }
+    lines.forEach(line => {
+        if (line.startsWith('#EXTINF')) {
+            const name = line.split(',')[1] || "Untitled";
+            temp = { name };
+        } else if (line.startsWith('http')) {
+            temp.url = line;
+            channels.push(temp);
+            temp = {};
+        }
+    });
 
-    const video = document.getElementById("video");
-    player = new shaka.Player(video);
-    player.addEventListener("error", onError);
-});
+    const container = document.getElementById("channels");
+    container.innerHTML = '';
 
-function loadStream() {
-    const url = document.getElementById("manifest").value.trim();
-    const drm = document.getElementById("drmType").value;
-    const lic = document.getElementById("licenseUrl").value.trim();
-    const kid = document.getElementById("ck_kid").value.trim();
-    const key = document.getElementById("ck_key").value.trim();
-
-    const config = { drm: {} };
-
-    if (drm === "com.widevine.alpha" && lic) {
-        config.drm.servers = {
-            "com.widevine.alpha": lic
-        };
-    }
-
-    if (drm === "org.w3.clearkey" && kid && key) {
-        config.drm.clearKeys = {
-            [kid]: key
-        };
-    }
-
-    player.configure(config);
-
-    player.load(url)
-        .then(() => console.log("Playing:", url))
-        .catch(onError);
+    channels.forEach(ch => {
+        const div = document.createElement("div");
+        div.className = "channel-item";
+        div.textContent = ch.name;
+        div.onclick = () => loadStream(ch.url);
+        container.appendChild(div);
+    });
 }
 
-function onError(e) {
-    showError("Player Error: " + e.detail.code);
-    console.error(e);
+function loadStream(url) {
+    const video = document.getElementById('player');
+
+    if (url.endsWith('.m3u8')) {
+        if (Hls.isSupported()) {
+            if (window.hls) window.hls.destroy();
+            const hls = new Hls();
+            window.hls = hls;
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        } else {
+            video.src = url;
+            video.play();
+        }
+    } else {
+        video.src = url;
+        video.play();
+    }
 }
-
-function showError(msg) {
-    document.getElementById("error").textContent = msg;
-}
-
-document.getElementById("drmType").addEventListener("change", (e) => {
-    const t = e.target.value;
-
-    document.getElementById("licenseUrl").style.display =
-        t === "com.widevine.alpha" ? "block" : "none";
-
-    document.getElementById("ck_kid").style.display =
-        t === "org.w3.clearkey" ? "block" : "none";
-
-    document.getElementById("ck_key").style.display =
-        t === "org.w3.clearkey" ? "block" : "none";
-});
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </body>
 </html>
