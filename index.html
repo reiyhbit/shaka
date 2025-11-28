@@ -221,7 +221,7 @@
 
      .quick-action-buttons {
        display: grid;
-       grid-template-columns: 1fr 1fr;
+       grid-template-columns: 1fr;
        gap: 0.5rem;
        margin-bottom: 1rem;
      }
@@ -433,6 +433,16 @@
        font-size: 0.75rem;
        font-weight: 500;
      }
+
+     .auto-load-message {
+       background: var(--primary-color);
+       color: white;
+       padding: 0.75rem;
+       border-radius: 0.5rem;
+       text-align: center;
+       margin-bottom: 1rem;
+       font-size: 0.875rem;
+     }
    </style>
 </head>
 <body>
@@ -450,7 +460,7 @@
         <div id="video-container" data-shaka-player-container>
           <video id="video" poster="assets/video_poster.svg" data-shaka-player autoplay></video>
         </div>
-        <h2 id="channel-name-display">No Channel Loaded</h2>
+        <h2 id="channel-name-display">Select a Channel to Play</h2>
         <div class="loading-spinner" id="loading-spinner">
           <div class="spinner"></div>
           <p>Loading stream...</p>
@@ -479,10 +489,15 @@
         <div id="add-mode-container">
             <h2>My Playlist Channels</h2>
             
+            <div class="auto-load-message">
+              <span class="material-symbols-rounded" style="font-size: 1rem; vertical-align: middle;">check_circle</span>
+              Channels loaded automatically
+            </div>
+
             <div class="playlist-status">
               <div class="status-row">
                 <span class="status-label">Playlist Status:</span>
-                <span class="status-badge" id="playlist-status">Ready</span>
+                <span class="status-badge" id="playlist-status">Loading...</span>
               </div>
               <div class="status-row">
                 <span class="status-label">Total Channels:</span>
@@ -491,15 +506,17 @@
             </div>
 
             <div class="quick-action-buttons">
-              <button id="load-default-btn">Load My Playlist</button>
-              <button id="refresh-playlist-btn">Refresh Playlist</button>
+              <button id="refresh-playlist-btn">
+                <span class="material-symbols-rounded" style="font-size: 1rem; vertical-align: middle;">refresh</span>
+                Refresh Playlist
+              </button>
             </div>
 
             <div class="input-group">
               <label for="channelSelector">Select Channel</label>
               <div class="select-wrapper">
                 <select id="channelSelector">
-                  <option value="">-- Click "Load My Playlist" first --</option>
+                  <option value="">Loading channels...</option>
                 </select>
               </div>
             </div>
@@ -561,15 +578,14 @@
   <div id="toast" class="toast"></div>
 
   <footer class="site-footer">
-    <p>&copy; 2025 Project Dev. All Rights Reserved.</p>
-    <p>Powered by Shaka Player (4.16.9)</p>
+    <p>&copy; 2025 REIYH PROJECT. All Rights Reserved.</p>
+    <p>Reiyh Player</p>
   </footer>
 
   <script>
     let player;
     let ui;
     let playlistData = [];
-    let defaultStreamsData = {}; 
     let currentStreamStats = {
       bufferHealth: 0,
       bitrate: 0,
@@ -597,7 +613,6 @@
     const statsPanel = document.getElementById('stats-panel');
     const channelInfo = document.getElementById('channel-info');
     const toast = document.getElementById('toast');
-    const loadDefaultBtn = document.getElementById('load-default-btn');
     const refreshPlaylistBtn = document.getElementById('refresh-playlist-btn');
     const playlistStatus = document.getElementById('playlist-status');
     const channelCount = document.getElementById('channel-count');
@@ -712,13 +727,12 @@
       errorDisplay.textContent = '';
     }
 
-    // Load embedded playlist automatically
+    // Load embedded playlist automatically on startup
     async function loadEmbeddedPlaylist() {
       try {
-        loadDefaultBtn.disabled = true;
-        loadDefaultBtn.textContent = 'Loading...';
         playlistStatus.textContent = 'Loading...';
         playlistStatus.style.background = 'var(--warning-color)';
+        channelSelector.innerHTML = '<option value="">Loading channels...</option>';
 
         const response = await fetch(EMBEDDED_M3U_URL);
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
@@ -733,15 +747,21 @@
         playlistStatus.style.background = 'var(--success-color)';
         channelCount.textContent = playlistData.length;
         
-        showToast(`Successfully loaded ${playlistData.length} channels from your playlist!`);
+        showToast(`Successfully loaded ${playlistData.length} channels!`);
+        
+        // Auto-select first channel if available
+        if (playlistData.length > 0) {
+          setTimeout(() => {
+            channelSelector.value = 'playlist_0';
+            onChannelSelect({ target: channelSelector });
+          }, 500);
+        }
         
       } catch (e) {
-        showError(`Failed to load embedded playlist: ${e.message}`);
+        showError(`Failed to load playlist: ${e.message}`);
         playlistStatus.textContent = 'Failed';
         playlistStatus.style.background = 'var(--error-color)';
-      } finally {
-        loadDefaultBtn.disabled = false;
-        loadDefaultBtn.textContent = 'Load My Playlist';
+        channelSelector.innerHTML = '<option value="">Failed to load channels</option>';
       }
     }
 
@@ -792,7 +812,7 @@
         channelNameDisplay.textContent = displayName;
         loadingSpinner.style.display = 'none';
         statsPanel.style.display = 'block';
-        showToast(`Successfully loaded: ${displayName}`);
+        showToast(`Now playing: ${displayName}`);
         
         // Update channel info
         updateChannelInfo(displayName, manifestUri, selectedDrmType);
@@ -872,10 +892,6 @@
           const m3uIndex = parseInt(selectedValue.substring(9), 10);
           channel = playlistData[m3uIndex];
           displayName = channel.name;
-      } else if (selectedValue.startsWith('default_')) {
-          const streamKey = selectedValue.substring(8);
-          channel = defaultStreamsData[streamKey];
-          displayName = streamKey.replace(/_/g, ' ');
       }
 
       if (channel) {
@@ -1061,7 +1077,6 @@
     }
 
     function setupPlayerEventListeners() {
-      loadDefaultBtn.addEventListener('click', loadEmbeddedPlaylist);
       refreshPlaylistBtn.addEventListener('click', loadEmbeddedPlaylist);
       document.getElementById('loadButton').addEventListener('click', () => loadStream());
       channelSelector.addEventListener('change', onChannelSelect);
@@ -1095,10 +1110,8 @@
         renderMenu();
         updateSliderPosition();
         
-        // Auto-load the playlist when page loads
-        setTimeout(() => {
-          loadEmbeddedPlaylist();
-        }, 1000);
+        // AUTO-LOAD THE PLAYLIST IMMEDIATELY ON PAGE LOAD
+        loadEmbeddedPlaylist();
       }
     }
 
