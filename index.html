@@ -219,28 +219,16 @@
        font-size: 0.75rem;
      }
 
-     .m3u-input-container {
-       display: flex;
+     .quick-action-buttons {
+       display: grid;
+       grid-template-columns: 1fr 1fr;
        gap: 0.5rem;
-       align-items: center;
+       margin-bottom: 1rem;
      }
 
-     .m3u-input-container input[type="text"] {
-       flex: 1;
-     }
-
-     #upload-m3u-button {
-       background: var(--primary-color);
-       border: none;
-       color: white;
+     .quick-action-buttons button {
        padding: 0.75rem;
-       border-radius: 0.5rem;
-       cursor: pointer;
-       transition: background-color 0.2s;
-     }
-
-     #upload-m3u-button:hover {
-       background: var(--primary-hover);
+       font-size: 0.875rem;
      }
 
      button:not(.menu-button):not(.input-mode-switcher button) {
@@ -422,6 +410,29 @@
        font-family: 'Google Sans Code', monospace;
        word-break: break-all;
      }
+
+     .playlist-status {
+       background: #2d2d2d;
+       border-radius: 0.5rem;
+       padding: 1rem;
+       margin-bottom: 1rem;
+       font-size: 0.875rem;
+     }
+
+     .status-row {
+       display: flex;
+       justify-content: space-between;
+       margin-bottom: 0.5rem;
+     }
+
+     .status-badge {
+       background: var(--success-color);
+       color: white;
+       padding: 0.25rem 0.5rem;
+       border-radius: 0.25rem;
+       font-size: 0.75rem;
+       font-weight: 500;
+     }
    </style>
 </head>
 <body>
@@ -466,38 +477,33 @@
             <button id="manual-mode-btn">Manual</button>
         </div>
         <div id="add-mode-container">
-            <h2>Load Playlist</h2>
-            <div class="input-group">
-                <label for="sourceSelector">Source</label>
-                <div class="select-wrapper">
-                  <select id="sourceSelector">
-                      <option value="playlist" selected>Upload</option>
-                      <option value="default">Samples</option>
-                  </select>
-                </div>
+            <h2>My Playlist Channels</h2>
+            
+            <div class="playlist-status">
+              <div class="status-row">
+                <span class="status-label">Playlist Status:</span>
+                <span class="status-badge" id="playlist-status">Ready</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Total Channels:</span>
+                <span class="status-value" id="channel-count">0</span>
+              </div>
             </div>
-            <div id="playlist-inputs">
-                <div class="input-group">
-                    <label for="m3uLink">Enter M3U Link or Upload File</label>
-                    <div class="m3u-input-container">
-                        <button id="upload-m3u-button" aria-label="Upload M3U file">
-                            <span class="material-symbols-rounded">add</span>
-                        </button>
-                        <input type="text" id="m3uLink" placeholder="https://converse.nathcreqtives.com/playlist.m3u">
-                        <input type="file" id="m3uFile" accept=".m3u,.m3u8" hidden>
-                    </div>
-                </div>
-                <button id="loadPlaylistButton">Load Playlist</button>
+
+            <div class="quick-action-buttons">
+              <button id="load-default-btn">Load My Playlist</button>
+              <button id="refresh-playlist-btn">Refresh Playlist</button>
             </div>
-            <hr>
+
             <div class="input-group">
               <label for="channelSelector">Select Channel</label>
               <div class="select-wrapper">
                 <select id="channelSelector">
-                  <option value="">-- Select a source first --</option>
+                  <option value="">-- Click "Load My Playlist" first --</option>
                 </select>
               </div>
             </div>
+
             <div class="channel-info" id="channel-info" style="display: none;">
               <div class="info-row">
                 <span class="info-label">URL:</span>
@@ -570,6 +576,10 @@
       resolution: 'N/A'
     };
 
+    // EMBEDDED M3U PLAYLIST DATA
+    const EMBEDDED_M3U_URL = "https://converse.nathcreqtives.com/playlist.m3u";
+    let isPlaylistLoaded = false;
+
     const video = document.getElementById('video');
     const videoContainer = document.getElementById('video-container');
     const errorDisplay = document.getElementById('error-display');
@@ -583,22 +593,14 @@
     const clearkeyContainer = document.getElementById('clearkey-container');
     const channelSelector = document.getElementById('channelSelector');
     const channelNameDisplay = document.getElementById('channel-name-display');
-    const m3uLinkInput = document.getElementById('m3uLink');
-    const m3uFileInput = document.getElementById('m3uFile');
-    const uploadM3uButton = document.getElementById('upload-m3u-button');
-    const loadPlaylistButton = document.getElementById('loadPlaylistButton');
-    const loadManualButton = document.getElementById('loadButton');
-    const inputModeSwitcher = document.querySelector('.input-mode-switcher');
-    const addModeBtn = document.getElementById('add-mode-btn');
-    const manualModeBtn = document.getElementById('manual-mode-btn');
-    const addModeContainer = document.getElementById('add-mode-container');
-    const manualModeContainer = document.getElementById('manual-mode-container');
-    const sourceSelector = document.getElementById('sourceSelector');
-    const playlistInputs = document.getElementById('playlist-inputs');
     const loadingSpinner = document.getElementById('loading-spinner');
     const statsPanel = document.getElementById('stats-panel');
     const channelInfo = document.getElementById('channel-info');
     const toast = document.getElementById('toast');
+    const loadDefaultBtn = document.getElementById('load-default-btn');
+    const refreshPlaylistBtn = document.getElementById('refresh-playlist-btn');
+    const playlistStatus = document.getElementById('playlist-status');
+    const channelCount = document.getElementById('channel-count');
 
     const menuToggleBtn = document.getElementById('menu-toggle-btn');
     const floatingMenu = document.getElementById('floating-menu');
@@ -708,6 +710,39 @@
     function clearError() {
       errorDisplay.style.display = 'none';
       errorDisplay.textContent = '';
+    }
+
+    // Load embedded playlist automatically
+    async function loadEmbeddedPlaylist() {
+      try {
+        loadDefaultBtn.disabled = true;
+        loadDefaultBtn.textContent = 'Loading...';
+        playlistStatus.textContent = 'Loading...';
+        playlistStatus.style.background = 'var(--warning-color)';
+
+        const response = await fetch(EMBEDDED_M3U_URL);
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        
+        const m3uData = await response.text();
+        playlistData = parseM3U(m3uData);
+        
+        populatePlaylistChannels();
+        isPlaylistLoaded = true;
+        
+        playlistStatus.textContent = 'Loaded';
+        playlistStatus.style.background = 'var(--success-color)';
+        channelCount.textContent = playlistData.length;
+        
+        showToast(`Successfully loaded ${playlistData.length} channels from your playlist!`);
+        
+      } catch (e) {
+        showError(`Failed to load embedded playlist: ${e.message}`);
+        playlistStatus.textContent = 'Failed';
+        playlistStatus.style.background = 'var(--error-color)';
+      } finally {
+        loadDefaultBtn.disabled = false;
+        loadDefaultBtn.textContent = 'Load My Playlist';
+      }
     }
 
     // Enhanced stream loading with better feedback
@@ -825,40 +860,6 @@
       }
     }
 
-    // Enhanced playlist loading with progress indication
-    async function handlePlaylistLoad() {
-      let m3uData = '';
-      clearError();
-      const file = m3uFileInput.files[0];
-      const link = m3uLinkInput.value.trim();
-
-      try {
-        loadPlaylistButton.disabled = true;
-        loadPlaylistButton.textContent = 'Loading...';
-
-        if (link) {
-          const response = await fetch(link);
-          if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-          m3uData = await response.text();
-        } else if (file) {
-          m3uData = await file.text();
-        } else {
-          showError('Please enter an M3U link or upload a file first.');
-          return;
-        }
-        
-        playlistData = parseM3U(m3uData);
-        populatePlaylistChannels();
-        showToast(`Loaded ${playlistData.length} channels from playlist`);
-        
-      } catch (e) {
-        showError(`Failed to load playlist: ${e.message}`);
-      } finally {
-        loadPlaylistButton.disabled = false;
-        loadPlaylistButton.textContent = 'Load Playlist';
-      }
-    }
-
     // Enhanced channel selection with better UI
     function onChannelSelect(event) {
       const selectedValue = event.target.value;
@@ -903,8 +904,20 @@
       }
     }
 
-    // Keep the rest of your existing functions (base64UrlToHex, renderMenu, etc.)
-    // ... [Previous functions remain the same]
+    function populatePlaylistChannels() {
+      channelSelector.innerHTML = '<option value="">-- Select a channel --</option>';
+      if (playlistData.length > 0) {
+        // Sort channels by name for better organization
+        playlistData.sort((a, b) => a.name.localeCompare(b.name));
+        
+        playlistData.forEach((channel, index) => {
+          const option = new Option(channel.name, `playlist_${index}`);
+          channelSelector.appendChild(option);
+        });
+      } else {
+        showError('No channels found in the playlist.');
+      }
+    }
 
     function base64UrlToHex(base64Url) {
       try {
@@ -1026,55 +1039,6 @@
       }
     }
 
-    async function fetchDefaultStreams() {
-        try {
-            const response = await fetch('js/getChannels.js');
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            defaultStreamsData = await response.json();
-            if (sourceSelector && sourceSelector.value === 'default') {
-                populateDefaultChannels();
-            }
-        } catch (e) {
-            showError(`Failed to load default streams: ${e.message}`);
-        }
-    }
-
-    function populatePlaylistChannels() {
-      channelSelector.innerHTML = '<option value="">-- Select a channel --</option>';
-      if (playlistData.length > 0) {
-        playlistData.forEach((channel, index) => {
-          const option = new Option(channel.name, `playlist_${index}`);
-          channelSelector.appendChild(option);
-        });
-        showToast(`${playlistData.length} channels loaded. Please select one.`);
-      } else {
-        showError('No channels found or playlist is empty.');
-      }
-      
-      m3uFileInput.value = '';
-    }
-
-    function populateDefaultChannels() {
-        channelSelector.innerHTML = '<option value="">-- Select a Sample Stream --</option>';
-        Object.keys(defaultStreamsData).forEach(channelKey => {
-            const displayName = channelKey.replace(/_/g, ' '); 
-            const option = new Option(displayName, `default_${channelKey}`);
-            channelSelector.appendChild(option);
-        });
-    }
-
-    function handleSourceChange(event) {
-        const selectedSource = event.target.value;
-        channelSelector.innerHTML = '<option value="">-- Select a source first --</option>';
-        if (selectedSource === 'default') {
-            playlistInputs.style.display = 'none'; 
-            populateDefaultChannels();
-        } else { 
-            playlistInputs.style.display = 'block';
-            if (playlistData.length > 0) populatePlaylistChannels();
-        }
-    }
-
     function updateSliderPosition() {
       const activeButton = inputModeSwitcher.querySelector('button.active');
       if (activeButton) {
@@ -1097,22 +1061,17 @@
     }
 
     function setupPlayerEventListeners() {
-      uploadM3uButton.addEventListener('click', () => m3uFileInput.click());
-      loadPlaylistButton.addEventListener('click', handlePlaylistLoad);
-      loadManualButton.addEventListener('click', () => loadStream());
+      loadDefaultBtn.addEventListener('click', loadEmbeddedPlaylist);
+      refreshPlaylistBtn.addEventListener('click', loadEmbeddedPlaylist);
+      document.getElementById('loadButton').addEventListener('click', () => loadStream());
       channelSelector.addEventListener('change', onChannelSelect);
-      addModeBtn.addEventListener('click', () => switchInputMode('playlist'));
-      manualModeBtn.addEventListener('click', () => switchInputMode('manual'));
+      document.getElementById('add-mode-btn').addEventListener('click', () => switchInputMode('playlist'));
+      document.getElementById('manual-mode-btn').addEventListener('click', () => switchInputMode('manual'));
       window.addEventListener('resize', updateSliderPosition);
       window.addEventListener('popstate', handleRouting);
       manifestUriInput.addEventListener('input', toggleDrmBlockVisibility);
       licenseTypeSelect.addEventListener('change', updateDrmFieldVisibility);
-      m3uFileInput.addEventListener('change', handlePlaylistLoad);
       
-      if (sourceSelector) {
-        sourceSelector.addEventListener('change', handleSourceChange);
-      }
-
       if (menuToggleBtn && floatingMenu) {
           menuToggleBtn.addEventListener('click', (event) => {
               event.stopPropagation();
@@ -1126,30 +1085,20 @@
       }
     }
 
-    function setupStaticPageHandlers() {
-        const interactiveElements = document.querySelectorAll(
-            '.back-button, .feedback-link, .social-icon-links a, .developer-section a'
-        );
-
-        if (interactiveElements.length > 0) {
-            interactiveElements.forEach(el => {
-                el.addEventListener('contextmenu', event => event.preventDefault());
-            });
-        }
-    }
-
     function main() {
-      setupStaticPageHandlers();
-
       if (document.getElementById('video-container')) {
         setupPlayerEventListeners();
         handleRouting(); 
         initPlayer();
-        fetchDefaultStreams(); 
         toggleDrmBlockVisibility(); 
         updateDrmFieldVisibility();
         renderMenu();
         updateSliderPosition();
+        
+        // Auto-load the playlist when page loads
+        setTimeout(() => {
+          loadEmbeddedPlaylist();
+        }, 1000);
       }
     }
 
