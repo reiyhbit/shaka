@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shaka Player - Universal Media Player</title>
+    <!-- Shaka Player CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.7/controls.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .player-container {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            margin-bottom: 30px;
+        }
+        
+        #video-container {
+            width: 100%;
+            position: relative;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        }
+        
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        
+        .player-controls {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        select {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .playlist-container {
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .playlist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .playlist-title {
+            font-size: 1.5rem;
+        }
+        
+        .playlist-items {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .playlist-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .playlist-item.active {
+            background: rgba(255, 100, 100, 0.3);
+            border-left: 4px solid #ff6464;
+        }
+        
+        .item-number {
+            width: 30px;
+            text-align: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .item-title {
+            flex: 1;
+        }
+        
+        .item-duration {
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.8);
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        
+        .error-message {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff6b6b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #fff;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .player-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .control-group {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Universal Media Player</h1>
+            <p class="subtitle">Powered by Shaka Player - Compatible with all major formats</p>
+        </header>
+        
+        <div class="player-container">
+            <div id="video-container">
+                <video id="video" autoplay controls></video>
+            </div>
+            
+            <div class="player-controls">
+                <div class="control-group">
+                    <button id="play-pause">
+                        <span>▶️ Play</span>
+                    </button>
+                    <button id="mute">
+                        <span>🔊 Mute</span>
+                    </button>
+                    <button id="fullscreen">
+                        <span>⛶ Fullscreen</span>
+                    </button>
+                </div>
+                
+                <div class="control-group">
+                    <select id="quality-selector">
+                        <option value="">Auto Quality</option>
+                    </select>
+                    <select id="audio-track-selector">
+                        <option value="">Default Audio</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="status-bar">
+                <div id="player-status">Ready to play</div>
+                <div id="player-stats">-</div>
+            </div>
+        </div>
+        
+        <div class="playlist-container">
+            <div class="playlist-header">
+                <h2 class="playlist-title">Playlist</h2>
+                <button id="load-playlist">Load Playlist</button>
+            </div>
+            
+            <div class="loading" id="playlist-loading">
+                <div class="spinner"></div>
+                <span>Loading playlist...</span>
+            </div>
+            
+            <div class="playlist-items" id="playlist-items">
+                <!-- Playlist items will be inserted here -->
+            </div>
+        </div>
+        
+        <div class="error-message" id="error-message">
+            <!-- Error messages will appear here -->
+        </div>
+    </div>
+
+    <!-- Shaka Player Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.7/shaka-player.ui.js"></script>
+    
+    <script>
+        // Initialize Shaka Player
+        document.addEventListener('DOMContentLoaded', function() {
+            // Install built-in polyfills to patch browser incompatibilities
+            shaka.polyfill.installAll();
+            
+            // Check if the browser supports the basic features we need
+            if (!shaka.Player.isBrowserSupported()) {
+                showError('Browser not supported! Please upgrade to a modern browser.');
+                return;
+            }
+            
+            const video = document.getElementById('video');
+            const player = new shaka.Player(video);
+            const ui = new shaka.ui.Overlay(player, video, document.getElementById('video-container'));
+            
+            // Configure player
+            player.configure({
+                streaming: {
+                    bufferingGoal: 60,
+                    rebufferingGoal: 10
+                }
+            });
+            
+            // Set up UI controls
+            const controls = ui.getControls();
+            
+            // Set up our own controls
+            document.getElementById('play-pause').addEventListener('click', function() {
+                if (video.paused) {
+                    video.play();
+                    this.innerHTML = '<span>⏸️ Pause</span>';
+                } else {
+                    video.pause();
+                    this.innerHTML = '<span>▶️ Play</span>';
+                }
+            });
+            
+            document.getElementById('mute').addEventListener('click', function() {
+                video.muted = !video.muted;
+                this.innerHTML = video.muted ? '<span>🔇 Unmute</span>' : '<span>🔊 Mute</span>';
+            });
+            
+            document.getElementById('fullscreen').addEventListener('click', function() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error('Error attempting to enable fullscreen:', err);
+                    });
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            });
+            
+            // Load the playlist when the button is clicked
+            document.getElementById('load-playlist').addEventListener('click', loadPlaylist);
+            
+            // Event listeners for player events
+            player.addEventListener('loading', function() {
+                document.getElementById('player-status').textContent = 'Loading...';
+            });
+            
+            player.addEventListener('loaded', function() {
+                document.getElementById('player-status').textContent = 'Loaded';
+            });
+            
+            player.addEventListener('error', function(event) {
+                console.error('Error code', event.detail.code, 'object', event.detail);
+                showError('Error playing media: ' + event.detail.message);
+            });
+            
+            // Load the playlist automatically on page load
+            loadPlaylist();
+        });
+        
+        // Function to load and parse the playlist
+        async function loadPlaylist() {
+            const playlistUrl = 'https://converse.nathcreqtives.com/playlist.m3u';
+            const playlistItems = document.getElementById('playlist-items');
+            const loadingElement = document.getElementById('playlist-loading');
+            
+            // Show loading indicator
+            loadingElement.style.display = 'flex';
+            playlistItems.innerHTML = '';
+            hideError();
+            
+            try {
+                const response = await fetch(playlistUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const playlistText = await response.text();
+                const playlistLines = playlistText.split('\n');
+                
+                // Parse M3U playlist
+                const items = [];
+                let currentItem = {};
+                
+                for (let i = 0; i < playlistLines.length; i++) {
+                    const line = playlistLines[i].trim();
+                    
+                    if (line.startsWith('#EXTINF:')) {
+                        // Extract duration and title
+                        const match = line.match(/#EXTINF:(-?\d+),(.*)/);
+                        if (match) {
+                            currentItem.duration = match[1];
+                            currentItem.title = match[2];
+                        }
+                    } else if (line && !line.startsWith('#') && !line.startsWith('http')) {
+                        // This is a URL line
+                        currentItem.url = line;
+                        items.push(currentItem);
+                        currentItem = {};
+                    } else if (line.startsWith('http')) {
+                        // Direct URL without EXTINF
+                        currentItem.url = line;
+                        currentItem.title = `Media ${items.length + 1}`;
+                        currentItem.duration = 'Unknown';
+                        items.push(currentItem);
+                        currentItem = {};
+                    }
+                }
+                
+                // If no items were found with standard parsing, try a simpler approach
+                if (items.length === 0) {
+                    for (let i = 0; i < playlistLines.length; i++) {
+                        const line = playlistLines[i].trim();
+                        if (line.startsWith('http')) {
+                            items.push({
+                                url: line,
+                                title: `Media ${items.length + 1}`,
+                                duration: 'Unknown'
+                            });
+                        }
+                    }
+                }
+                
+                // Display playlist items
+                if (items.length > 0) {
+                    items.forEach((item, index) => {
+                        const itemElement = document.createElement('div');
+                        itemElement.className = 'playlist-item';
+                        itemElement.innerHTML = `
+                            <div class="item-number">${index + 1}</div>
+                            <div class="item-title">${item.title}</div>
+                            <div class="item-duration">${formatDuration(item.duration)}</div>
+                        `;
+                        
+                        itemElement.addEventListener('click', function() {
+                            // Remove active class from all items
+                            document.querySelectorAll('.playlist-item').forEach(el => {
+                                el.classList.remove('active');
+                            });
+                            
+                            // Add active class to clicked item
+                            this.classList.add('active');
+                            
+                            // Load the selected media
+                            loadMedia(item.url, item.title);
+                        });
+                        
+                        playlistItems.appendChild(itemElement);
+                    });
+                    
+                    // Auto-play the first item
+                    if (items.length > 0) {
+                        const firstItem = playlistItems.querySelector('.playlist-item');
+                        firstItem.classList.add('active');
+                        loadMedia(items[0].url, items[0].title);
+                    }
+                } else {
+                    showError('No playable media found in the playlist.');
+                }
+                
+            } catch (error) {
+                console.error('Error loading playlist:', error);
+                showError('Failed to load playlist: ' + error.message);
+            } finally {
+                // Hide loading indicator
+                loadingElement.style.display = 'none';
+            }
+        }
+        
+        // Function to load a media item
+        async function loadMedia(url, title) {
+            const video = document.getElementById('video');
+            const player = video.__ui_;
+            
+            document.getElementById('player-status').textContent = `Loading: ${title}`;
+            hideError();
+            
+            try {
+                // Load the media with Shaka Player
+                await player.load(url);
+                document.getElementById('player-status').textContent = `Playing: ${title}`;
+                
+                // Update play/pause button
+                document.getElementById('play-pause').innerHTML = '<span>⏸️ Pause</span>';
+                
+                // Set up quality selector
+                setupQualitySelector(player);
+                
+                // Set up audio track selector
+                setupAudioTrackSelector(player);
+                
+            } catch (error) {
+                console.error('Error loading media:', error);
+                showError('Error playing media: ' + error.message);
+            }
+        }
+        
+        // Function to set up quality selector
+        function setupQualitySelector(player) {
+            const qualitySelector = document.getElementById('quality-selector');
+            qualitySelector.innerHTML = '<option value="">Auto Quality</option>';
+            
+            const tracks = player.getVariantTracks();
+            
+            tracks.forEach((track, index) => {
+                if (track.type === 'variant') {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    
+                    let label = '';
+                    if (track.height) {
+                        label = `${track.height}p`;
+                    } else if (track.width) {
+                        label = `${Math.round(track.width)}x${Math.round(track.height)}`;
+                    } else {
+                        label = 'Unknown';
+                    }
+                    
+                    if (track.bandwidth) {
+                        label += ` (${Math.round(track.bandwidth / 1000)} kbps)`;
+                    }
+                    
+                    option.textContent = label;
+                    qualitySelector.appendChild(option);
+                }
+            });
+            
+            qualitySelector.addEventListener('change', function() {
+                if (this.value === '') {
+                    player.configure({ abr: { enabled: true } });
+                } else {
+                    player.configure({ abr: { enabled: false } });
+                    const track = tracks[this.value];
+                    player.selectVariantTrack(track, true);
+                }
+            });
+        }
+        
+        // Function to set up audio track selector
+        function setupAudioTrackSelector(player) {
+            const audioSelector = document.getElementById('audio-track-selector');
+            audioSelector.innerHTML = '<option value="">Default Audio</option>';
+            
+            const tracks = player.getAudioLanguagesAndRoles();
+            
+            tracks.forEach((track, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `${track.language}${track.role ? ` (${track.role})` : ''}`;
+                audioSelector.appendChild(option);
+            });
+            
+            audioSelector.addEventListener('change', function() {
+                if (this.value === '') {
+                    // Use default
+                    player.selectAudioLanguage('');
+                } else {
+                    const track = tracks[this.value];
+                    player.selectAudioLanguage(track.language, track.role || '');
+                }
+            });
+        }
+        
+        // Helper function to format duration
+        function formatDuration(seconds) {
+            if (isNaN(seconds) || seconds === 'Unknown') return 'Unknown';
+            
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+        
+        // Helper function to show error messages
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        // Helper function to hide error messages
+        function hideError() {
+            document.getElementById('error-message').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
