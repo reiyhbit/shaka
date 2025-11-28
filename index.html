@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shaka Player - Playlist Viewer</title>
-    <!-- Shaka Player CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.7/controls.css">
+    <!-- Shaka Player v4.16.9 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.9/shaka-player.ui.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.16.9/controls.css">
     <style>
         :root {
-            --primary-color: #3498db;
-            --secondary-color: #2c3e50;
-            --accent-color: #e74c3c;
+            --primary-color: #4285f4;
+            --secondary-color: #34a853;
+            --accent-color: #ea4335;
             --background-color: #1a1a1a;
             --surface-color: #2d2d2d;
             --text-color: #ffffff;
@@ -27,7 +28,7 @@
         }
         
         body {
-            background: linear-gradient(135deg, var(--secondary-color), var(--background-color));
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
             color: var(--text-color);
             min-height: 100vh;
             padding: 20px;
@@ -48,8 +49,9 @@
         h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-            color: var(--primary-color);
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
         
         .subtitle {
@@ -69,15 +71,11 @@
         #video-container {
             width: 100%;
             position: relative;
-            padding-top: 56.25%; /* 16:9 Aspect Ratio */
         }
         
         #video {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
-            height: 100%;
+            height: 400px;
             background: #000;
         }
         
@@ -170,7 +168,7 @@
         }
         
         .playlist-item.active {
-            background: rgba(52, 152, 219, 0.3);
+            background: rgba(66, 133, 244, 0.3);
             border-left: 4px solid var(--primary-color);
         }
         
@@ -202,7 +200,7 @@
         }
         
         .error-message {
-            background: rgba(231, 76, 60, 0.2);
+            background: rgba(234, 67, 53, 0.2);
             color: #ff6b6b;
             padding: 15px;
             border-radius: var(--border-radius);
@@ -253,6 +251,19 @@
                 gap: 10px;
                 text-align: center;
             }
+            
+            #video {
+                height: 300px;
+            }
+        }
+        
+        /* Shaka Player customizations */
+        .shaka-video-container {
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+        }
+        
+        .shaka-controls-button-panel {
+            background: rgba(0, 0, 0, 0.7);
         }
     </style>
 </head>
@@ -260,24 +271,29 @@
     <div class="container">
         <header>
             <h1>Shaka Player - Playlist Viewer</h1>
-            <p class="subtitle">Playing your M3U playlist with full format compatibility</p>
+            <p class="subtitle">Playing your M3U playlist with Shaka Player v4.16.9</p>
         </header>
         
         <div class="player-container">
             <div id="video-container">
-                <video id="video" autoplay controls></video>
+                <!-- Video element will be used by Shaka Player -->
+                <video id="video"
+                    class="shaka-video"
+                    autoplay
+                    controls>
+                </video>
             </div>
             
             <div class="player-controls">
                 <div class="control-group">
+                    <button id="prev-btn">
+                        <span>⏮️ Previous</span>
+                    </button>
                     <button id="play-pause">
                         <span>▶️ Play</span>
                     </button>
-                    <button id="mute">
-                        <span>🔊 Mute</span>
-                    </button>
-                    <button id="fullscreen">
-                        <span>⛶ Fullscreen</span>
+                    <button id="next-btn">
+                        <span>⏭️ Next</span>
                     </button>
                 </div>
                 
@@ -305,7 +321,7 @@
             
             <div class="loading" id="playlist-loading">
                 <div class="spinner"></div>
-                <span>Loading playlist...</span>
+                <span>Loading playlist from: https://converse.nathcreqtives.com/playlist.m3u</span>
             </div>
             
             <div class="playlist-items" id="playlist-items">
@@ -318,266 +334,270 @@
         </div>
     </div>
 
-    <!-- Shaka Player Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.7/shaka-player.ui.js"></script>
-    
     <script>
         // Define playlist URL
         const PLAYLIST_URL = 'https://converse.nathcreqtives.com/playlist.m3u';
+        
+        // Global variables
+        let player;
+        let ui;
+        let currentPlaylist = [];
+        let currentItemIndex = 0;
 
         // Initialize Shaka Player
-        document.addEventListener('DOMContentLoaded', function() {
-            // Install built-in polyfills to patch browser incompatibilities
-            shaka.polyfill.installAll();
-            
+        async function initApp() {
             // Check if the browser supports the basic features we need
             if (!shaka.Player.isBrowserSupported()) {
                 showError('Browser not supported! Please upgrade to a modern browser.');
                 return;
             }
-            
+
+            // Install built-in polyfills
+            shaka.polyfill.installAll();
+
             const video = document.getElementById('video');
-            const player = new shaka.Player(video);
-            const ui = new shaka.ui.Overlay(player, video, document.getElementById('video-container'));
+            
+            // Create Player and UI
+            player = new shaka.Player(video);
+            ui = new shaka.ui.Overlay(player, video, document.getElementById('video-container'));
             
             // Configure player
             player.configure({
                 streaming: {
-                    bufferingGoal: 60,
-                    rebufferingGoal: 10
+                    bufferingGoal: 30,
+                    rebufferingGoal: 5
                 }
             });
-            
-            // Set up UI controls
-            const controls = ui.getControls();
-            
-            // Set up our own controls
-            document.getElementById('play-pause').addEventListener('click', function() {
-                if (video.paused) {
-                    video.play();
-                    this.innerHTML = '<span>⏸️ Pause</span>';
-                } else {
-                    video.pause();
-                    this.innerHTML = '<span>▶️ Play</span>';
-                }
+
+            // Set up event listeners
+            player.addEventListener('error', onPlayerError);
+            player.addEventListener('loading', () => {
+                document.getElementById('player-status').textContent = 'Loading media...';
             });
-            
-            document.getElementById('mute').addEventListener('click', function() {
-                video.muted = !video.muted;
-                this.innerHTML = video.muted ? '<span>🔇 Unmute</span>' : '<span>🔊 Mute</span>';
+            player.addEventListener('loaded', () => {
+                document.getElementById('player-status').textContent = 'Media loaded';
             });
+
+            // Set up custom controls
+            setupCustomControls();
+
+            // Load the playlist
+            await loadPlaylist();
+        }
+
+        // Set up custom controls
+        function setupCustomControls() {
+            document.getElementById('prev-btn').addEventListener('click', playPrevious);
+            document.getElementById('next-btn').addEventListener('click', playNext);
+            document.getElementById('play-pause').addEventListener('click', togglePlayPause);
+        }
+
+        // Toggle play/pause
+        function togglePlayPause() {
+            const video = document.getElementById('video');
+            if (video.paused) {
+                video.play();
+                this.innerHTML = '<span>⏸️ Pause</span>';
+            } else {
+                video.pause();
+                this.innerHTML = '<span>▶️ Play</span>';
+            }
+        }
+
+        // Play previous item
+        function playPrevious() {
+            if (currentPlaylist.length === 0) return;
             
-            document.getElementById('fullscreen').addEventListener('click', function() {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        console.error('Error attempting to enable fullscreen:', err);
-                    });
-                } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    }
-                }
-            });
+            currentItemIndex--;
+            if (currentItemIndex < 0) {
+                currentItemIndex = currentPlaylist.length - 1;
+            }
+            playCurrentItem();
+        }
+
+        // Play next item
+        function playNext() {
+            if (currentPlaylist.length === 0) return;
             
-            // Event listeners for player events
-            player.addEventListener('loading', function() {
-                document.getElementById('player-status').textContent = 'Loading...';
-            });
-            
-            player.addEventListener('loaded', function() {
-                document.getElementById('player-status').textContent = 'Loaded';
-            });
-            
-            player.addEventListener('error', function(event) {
-                console.error('Error code', event.detail.code, 'object', event.detail);
-                showError('Error playing media: ' + event.detail.message);
-            });
-            
-            // Load the playlist automatically on page load
-            loadPlaylist(player);
-        });
-        
-        // Function to load and parse the playlist
-        async function loadPlaylist(player) {
+            currentItemIndex++;
+            if (currentItemIndex >= currentPlaylist.length) {
+                currentItemIndex = 0;
+            }
+            playCurrentItem();
+        }
+
+        // Load and parse the playlist
+        async function loadPlaylist() {
             const playlistItems = document.getElementById('playlist-items');
             const loadingElement = document.getElementById('playlist-loading');
             const playlistInfo = document.getElementById('playlist-info');
-            
-            // Show loading indicator
-            loadingElement.style.display = 'flex';
-            playlistItems.innerHTML = '';
-            hideError();
-            
+
             try {
                 const response = await fetch(PLAYLIST_URL);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const playlistText = await response.text();
-                const playlistLines = playlistText.split('\n');
+                currentPlaylist = parseM3U(playlistText);
                 
-                // Parse M3U playlist
-                const items = [];
-                let currentItem = {};
-                
-                for (let i = 0; i < playlistLines.length; i++) {
-                    const line = playlistLines[i].trim();
-                    
-                    if (line.startsWith('#EXTINF:')) {
-                        // Extract duration and title
-                        const match = line.match(/#EXTINF:(-?\d+),(.*)/);
-                        if (match) {
-                            currentItem.duration = match[1];
-                            currentItem.title = match[2];
-                        }
-                    } else if (line && !line.startsWith('#') && !line.startsWith('http')) {
-                        // This is a URL line
-                        currentItem.url = line;
-                        items.push(currentItem);
-                        currentItem = {};
-                    } else if (line.startsWith('http')) {
-                        // Direct URL without EXTINF
-                        currentItem.url = line;
-                        currentItem.title = `Media ${items.length + 1}`;
-                        currentItem.duration = 'Unknown';
-                        items.push(currentItem);
-                        currentItem = {};
-                    }
-                }
-                
-                // If no items were found with standard parsing, try a simpler approach
-                if (items.length === 0) {
-                    for (let i = 0; i < playlistLines.length; i++) {
-                        const line = playlistLines[i].trim();
-                        if (line.startsWith('http')) {
-                            items.push({
-                                url: line,
-                                title: `Media ${items.length + 1}`,
-                                duration: 'Unknown'
-                            });
-                        }
-                    }
-                }
-                
-                // Display playlist info
-                playlistInfo.textContent = `${items.length} items`;
+                // Update playlist info
+                playlistInfo.textContent = `${currentPlaylist.length} items`;
                 
                 // Display playlist items
-                if (items.length > 0) {
-                    items.forEach((item, index) => {
-                        const itemElement = document.createElement('div');
-                        itemElement.className = 'playlist-item';
-                        itemElement.innerHTML = `
-                            <div class="item-number">${index + 1}</div>
-                            <div class="item-title">${item.title}</div>
-                            <div class="item-duration">${formatDuration(item.duration)}</div>
-                        `;
-                        
-                        itemElement.addEventListener('click', function() {
-                            // Remove active class from all items
-                            document.querySelectorAll('.playlist-item').forEach(el => {
-                                el.classList.remove('active');
-                            });
-                            
-                            // Add active class to clicked item
-                            this.classList.add('active');
-                            
-                            // Load the selected media
-                            loadMedia(player, item.url, item.title);
-                        });
-                        
-                        playlistItems.appendChild(itemElement);
-                    });
-                    
-                    // Auto-play the first item
-                    if (items.length > 0) {
-                        const firstItem = playlistItems.querySelector('.playlist-item');
-                        firstItem.classList.add('active');
-                        loadMedia(player, items[0].url, items[0].title);
-                    }
-                } else {
-                    playlistItems.innerHTML = `
-                        <div class="empty-playlist">
-                            <h3>No playable media found</h3>
-                            <p>The playlist is empty or couldn't be parsed correctly.</p>
-                        </div>
-                    `;
-                }
+                displayPlaylistItems();
                 
+                // Auto-play the first item
+                if (currentPlaylist.length > 0) {
+                    playCurrentItem();
+                }
+
             } catch (error) {
                 console.error('Error loading playlist:', error);
                 showError('Failed to load playlist: ' + error.message);
-                
-                playlistItems.innerHTML = `
-                    <div class="empty-playlist">
-                        <h3>Error loading playlist</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
             } finally {
-                // Hide loading indicator
                 loadingElement.style.display = 'none';
             }
         }
-        
-        // Function to load a media item
-        async function loadMedia(player, url, title) {
-            const video = document.getElementById('video');
-            
-            document.getElementById('player-status').textContent = `Loading: ${title}`;
+
+        // Parse M3U playlist
+        function parseM3U(playlistText) {
+            const items = [];
+            const lines = playlistText.split('\n');
+            let currentItem = {};
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                if (line.startsWith('#EXTINF:')) {
+                    // Parse EXTINF line
+                    const match = line.match(/#EXTINF:(-?\d+),(.*)/);
+                    if (match) {
+                        currentItem.duration = parseInt(match[1]);
+                        currentItem.title = match[2] || `Track ${items.length + 1}`;
+                    }
+                } else if (line && !line.startsWith('#') && line.length > 0) {
+                    // This is a URL line
+                    currentItem.url = line;
+                    
+                    // If no title was set, create one
+                    if (!currentItem.title) {
+                        currentItem.title = `Media ${items.length + 1}`;
+                    }
+                    
+                    items.push({...currentItem});
+                    currentItem = {};
+                }
+            }
+
+            return items;
+        }
+
+        // Display playlist items
+        function displayPlaylistItems() {
+            const playlistItems = document.getElementById('playlist-items');
+            playlistItems.innerHTML = '';
+
+            if (currentPlaylist.length === 0) {
+                playlistItems.innerHTML = `
+                    <div class="empty-playlist">
+                        <h3>No playable media found</h3>
+                        <p>The playlist is empty or couldn't be parsed correctly.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            currentPlaylist.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'playlist-item';
+                if (index === currentItemIndex) {
+                    itemElement.classList.add('active');
+                }
+                
+                itemElement.innerHTML = `
+                    <div class="item-number">${index + 1}</div>
+                    <div class="item-title">${item.title}</div>
+                    <div class="item-duration">${formatDuration(item.duration)}</div>
+                `;
+                
+                itemElement.addEventListener('click', () => {
+                    currentItemIndex = index;
+                    playCurrentItem();
+                });
+                
+                playlistItems.appendChild(itemElement);
+            });
+        }
+
+        // Play current item
+        async function playCurrentItem() {
+            if (currentPlaylist.length === 0) return;
+
+            const item = currentPlaylist[currentItemIndex];
+            document.getElementById('player-status').textContent = `Loading: ${item.title}`;
             hideError();
-            
+
             try {
-                // Load the media with Shaka Player
-                await player.load(url);
-                document.getElementById('player-status').textContent = `Playing: ${title}`;
+                await player.load(item.url);
+                document.getElementById('player-status').textContent = `Playing: ${item.title}`;
                 
                 // Update play/pause button
                 document.getElementById('play-pause').innerHTML = '<span>⏸️ Pause</span>';
                 
-                // Set up quality selector
-                setupQualitySelector(player);
+                // Update active item in playlist
+                updateActivePlaylistItem();
                 
-                // Set up audio track selector
-                setupAudioTrackSelector(player);
-                
+                // Set up quality and audio selectors
+                setupQualitySelector();
+                setupAudioTrackSelector();
+
             } catch (error) {
                 console.error('Error loading media:', error);
                 showError('Error playing media: ' + error.message);
             }
         }
-        
-        // Function to set up quality selector
-        function setupQualitySelector(player) {
+
+        // Update active playlist item
+        function updateActivePlaylistItem() {
+            const items = document.querySelectorAll('.playlist-item');
+            items.forEach((item, index) => {
+                if (index === currentItemIndex) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        // Set up quality selector
+        function setupQualitySelector() {
             const qualitySelector = document.getElementById('quality-selector');
             qualitySelector.innerHTML = '<option value="">Auto Quality</option>';
-            
+
             const tracks = player.getVariantTracks();
             
             tracks.forEach((track, index) => {
-                if (track.type === 'variant') {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    
-                    let label = '';
-                    if (track.height) {
-                        label = `${track.height}p`;
-                    } else if (track.width) {
-                        label = `${Math.round(track.width)}x${Math.round(track.height)}`;
-                    } else {
-                        label = 'Unknown';
-                    }
-                    
-                    if (track.bandwidth) {
-                        label += ` (${Math.round(track.bandwidth / 1000)} kbps)`;
-                    }
-                    
-                    option.textContent = label;
-                    qualitySelector.appendChild(option);
+                const option = document.createElement('option');
+                option.value = index;
+                
+                let label = '';
+                if (track.height) {
+                    label = `${track.height}p`;
+                } else if (track.width) {
+                    label = `${Math.round(track.width)}x${Math.round(track.height)}`;
+                } else {
+                    label = 'Unknown';
                 }
+                
+                if (track.bandwidth) {
+                    label += ` (${Math.round(track.bandwidth / 1000)} kbps)`;
+                }
+                
+                option.textContent = label;
+                qualitySelector.appendChild(option);
             });
-            
+
             qualitySelector.addEventListener('change', function() {
                 if (this.value === '') {
                     player.configure({ abr: { enabled: true } });
@@ -588,12 +608,12 @@
                 }
             });
         }
-        
-        // Function to set up audio track selector
-        function setupAudioTrackSelector(player) {
+
+        // Set up audio track selector
+        function setupAudioTrackSelector() {
             const audioSelector = document.getElementById('audio-track-selector');
             audioSelector.innerHTML = '<option value="">Default Audio</option>';
-            
+
             const tracks = player.getAudioLanguagesAndRoles();
             
             tracks.forEach((track, index) => {
@@ -602,10 +622,9 @@
                 option.textContent = `${track.language}${track.role ? ` (${track.role})` : ''}`;
                 audioSelector.appendChild(option);
             });
-            
+
             audioSelector.addEventListener('change', function() {
                 if (this.value === '') {
-                    // Use default
                     player.selectAudioLanguage('');
                 } else {
                     const track = tracks[this.value];
@@ -613,27 +632,36 @@
                 }
             });
         }
-        
-        // Helper function to format duration
+
+        // Format duration
         function formatDuration(seconds) {
-            if (isNaN(seconds) || seconds === 'Unknown') return 'Unknown';
+            if (!seconds || isNaN(seconds) || seconds < 0) return 'Unknown';
             
             const mins = Math.floor(seconds / 60);
             const secs = Math.floor(seconds % 60);
             return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
-        
-        // Helper function to show error messages
+
+        // Player error handler
+        function onPlayerError(event) {
+            console.error('Error code', event.detail.code, 'object', event.detail);
+            showError('Player error: ' + event.detail.message);
+        }
+
+        // Show error message
         function showError(message) {
             const errorElement = document.getElementById('error-message');
             errorElement.textContent = message;
             errorElement.style.display = 'block';
         }
-        
-        // Helper function to hide error messages
+
+        // Hide error message
         function hideError() {
             document.getElementById('error-message').style.display = 'none';
         }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
