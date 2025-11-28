@@ -1,554 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <title>Stream Player - Playlist Viewer</title>
-    <meta name="theme-color" content="#000000">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Rethink+Sans:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.9/dist/shaka-player.ui.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.9/dist/controls.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4285f4;
-            --secondary-color: #34a853;
-            --accent-color: #ea4335;
-            --background-color: #0f0f0f;
-            --surface-color: #1a1a1a;
-            --card-color: #2d2d2d;
-            --text-color: #ffffff;
-            --text-secondary: #aaaaaa;
-            --border-radius: 12px;
-            --transition: all 0.3s ease;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            background: var(--background-color);
-            color: var(--text-color);
-            font-family: 'Rethink Sans', sans-serif;
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 0 20px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 30px;
-        }
-        
-        .logo {
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .grid-container {
-            display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 30px;
-        }
-        
-        .player-wrapper {
-            background: var(--surface-color);
-            border-radius: var(--border-radius);
-            overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        }
-        
-        #video-container {
-            width: 100%;
-            position: relative;
-        }
-        
-        #video {
-            width: 100%;
-            height: 400px;
-            background: #000;
-        }
-        
-        #channel-name-display {
-            padding: 20px;
-            font-size: 1.4rem;
-            font-weight: 600;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .card {
-            background: var(--card-color);
-            border-radius: var(--border-radius);
-            padding: 25px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        }
-        
-        .card h2 {
-            margin-bottom: 20px;
-            font-size: 1.4rem;
-            color: var(--primary-color);
-        }
-        
-        .input-group {
-            margin-bottom: 20px;
-        }
-        
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-        
-        .select-wrapper {
-            position: relative;
-        }
-        
-        select {
-            width: 100%;
-            padding: 12px 15px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.3);
-            color: var(--text-color);
-            font-family: inherit;
-            appearance: none;
-            cursor: pointer;
-        }
-        
-        .select-wrapper::after {
-            content: "▼";
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-secondary);
-            pointer-events: none;
-        }
-        
-        button {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-family: inherit;
-            font-weight: 500;
-            cursor: pointer;
-            transition: var(--transition);
-            width: 100%;
-        }
-        
-        button:hover {
-            background: #3367d6;
-            transform: translateY(-2px);
-        }
-        
-        .playlist-items {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 20px;
-        }
-        
-        .playlist-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            transition: var(--transition);
-            cursor: pointer;
-        }
-        
-        .playlist-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .playlist-item.active {
-            background: rgba(66, 133, 244, 0.2);
-            border-left: 4px solid var(--primary-color);
-        }
-        
-        .item-number {
-            width: 30px;
-            text-align: center;
-            font-weight: bold;
-            margin-right: 15px;
-            color: var(--text-secondary);
-        }
-        
-        .item-title {
-            flex: 1;
-            font-size: 0.95rem;
-        }
-        
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.5);
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-        
-        .error-message {
-            background: rgba(234, 67, 53, 0.2);
-            color: #ff6b6b;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            display: none;
-        }
-        
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            color: var(--text-secondary);
-        }
-        
-        .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 3px solid var(--primary-color);
-            width: 20px;
-            height: 20px;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .empty-playlist {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-secondary);
-        }
-        
-        footer {
-            text-align: center;
-            padding: 30px 0 10px 0;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            margin-top: 40px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        @media (max-width: 1024px) {
-            .grid-container {
-                grid-template-columns: 1fr;
-            }
-            
-            #video {
-                height: 300px;
-            }
-        }
-        
-        /* Shaka Player customizations */
-        .shaka-video-container {
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
-        }
-        
-        .shaka-controls-button-panel {
-            background: rgba(0, 0, 0, 0.7);
-        }
-    </style>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+   <title>Stream Tester by Project Dev</title>
+   <meta name="theme-color" content="#000000">
+   <link rel="icon" type="image/png" href="assets/favicon-96x96.png" sizes="96x96" />
+   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+   <link rel="shortcut icon" href="assets/favicon.ico" />
+   <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+   <meta name="apple-mobile-web-app-title" content="Stream Tester" />
+   <link rel="manifest" href="assets/site.webmanifest" />
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.cdnfonts.com/css/general-sans" rel="stylesheet">
+   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaspace-font/neon.css">
+   <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
+   <link href="https://fonts.googleapis.com/css2?family=Rethink+Sans:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Text:wght@400;500;700&display=swap" rel="stylesheet">
+   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500;700&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+   <script src="https://unpkg.com/mux.js@5.10.0/dist/mux.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.9/dist/shaka-player.ui.min.js"></script>
+   <link href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.9/dist/controls.min.css" rel="stylesheet">
+   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo">Stream Player</div>
-            <div class="status-bar">
-                <div id="player-status">Loading playlist...</div>
-                <div id="player-stats">Shaka Player 4.16.9</div>
-            </div>
-        </header>
-        
-        <main class="grid-container">
-            <div class="player-wrapper">
-                <div id="video-container">
-                    <video id="video"
-                        class="shaka-video"
-                        autoplay
-                        controls
-                        poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='400' viewBox='0 0 800 400'%3E%3Crect width='800' height='400' fill='%231a1a1a'/%3E%3Cpath d='M320,200 L400,240 L320,280 Z' fill='%234285f4'/%3E%3Ctext x='400' y='320' text-anchor='middle' font-family='Arial' font-size='24' fill='%23ffffff'%3EStream Player%3C/text%3E%3C/svg%3E">
-                    </video>
-                </div>
-                <h2 id="channel-name-display">No Channel Loaded</h2>
-            </div>
+  <div class="container">
+     <header class="header">
+       <a href="/stream-tester">
+         <img src="assets/stream_tester_logo.svg" alt="Stream Tester Logo" class="logo-img">
+       </a>
+       <button id="menu-toggle-btn" class="menu-button" aria-label="Open menu">
+         <span class="material-symbols-rounded">menu</span>
+       </button>
+     </header>
+    <main class="grid-container">
+      <div class="player-wrapper">
+        <div id="video-container" data-shaka-player-container>
+          <video id="video" poster="assets/video_poster.svg" data-shaka-player autoplay></video>
+        </div>
+        <h2 id="channel-name-display">No Channel Loaded</h2>
+      </div>
 
-            <div class="card">
-                <h2>Playlist</h2>
+      <div class="card">
+        <div class="input-mode-switcher">
+            <button id="add-mode-btn" class="active">Playlist</button>
+            <button id="manual-mode-btn">Manual</button>
+        </div>
+        <div id="add-mode-container">
+            <h2>Load Playlist</h2>
+            <div class="input-group">
+                <label for="sourceSelector">Source</label>
+                <div class="select-wrapper">
+                  <select id="sourceSelector">
+                      <option value="playlist" selected>Upload</option>
+                      <option value="default">Samples</option>
+                  </select>
+                </div>
+            </div>
+            <div id="playlist-inputs">
                 <div class="input-group">
-                    <label>Playlist Source</label>
-                    <div class="select-wrapper">
-                        <select id="sourceSelector">
-                            <option value="url" selected>URL Playlist</option>
-                        </select>
+                    <label for="m3uLink">Enter M3U Link or Upload File</label>
+                    <div class="m3u-input-container">
+                        <button id="upload-m3u-button" aria-label="Upload M3U file">
+                            <span class="material-symbols-rounded">add</span>
+                        </button>
+                        <input type="text" id="m3uLink" placeholder="Paste M3U playlist URL here">
+                        <input type="file" id="m3uFile" accept=".m3u,.m3u8" hidden>
                     </div>
                 </div>
-                
-                <div class="loading" id="playlist-loading">
-                    <div class="spinner"></div>
-                    <span>Loading playlist from: https://converse.nathcreqtives.com/playlist.m3u</span>
-                </div>
-                
-                <div class="playlist-items" id="playlist-items">
-                    <!-- Playlist items will be inserted here -->
-                </div>
-                
-                <div class="error-message" id="error-message">
-                    <!-- Error messages will appear here -->
-                </div>
+                <button id="loadPlaylistButton">Load Playlist</button>
             </div>
-        </main>
-    </div>
-    
-    <footer>
-        <p>&copy; 2024 Stream Player. Powered by Shaka Player (4.16.9)</p>
-    </footer>
+            <hr>
+            <div class="input-group">
+              <label for="channelSelector">Select Channel</label>
+              <div class="select-wrapper">
+                <select id="channelSelector">
+                  <option value="">-- Select a source first --</option>
+                </select>
+              </div>
+            </div>
+        </div>
+        <div id="manual-mode-container" style="display: none;">
+            <h2>Manual Input</h2>
+            <div class="input-group">
+              <label for="manifestUri">Manifest URI</label>
+              <input type="text" id="manifestUri" placeholder="Enter HLS or MPEG-DASH URI">
+            </div>
+            <div class="drm-fields" style="display: none;">
+              <p style="font-size: 0.7rem; color: #888; margin-top: 1rem; margin-bottom: 0.5rem;">DRM (for MPEG-DASH only)</p>
+              <div class="input-group">
+                <label for="licenseTypeSelect">DRM Type</label>
+                <div class="select-wrapper">
+                  <select id="licenseTypeSelect">
+                      <option value="com.widevine.alpha" selected>License URL (com.widevine.alpha)</option>
+                      <option value="org.w3.clearkey">ClearKey (org.w3.clearkey)</option>
+                  </select>
+                </div>
+              </div>
+              <div id="license-url-container">
+                  <div class="input-group">
+                    <label for="licenseServerUrl">License Server URL</label>
+                    <input type="text" id="licenseServerUrl" placeholder="Enter license server URL">
+                  </div>
+              </div>
+              <div id="clearkey-container" style="display: none;">
+                  <div class="input-group">
+                    <label for="k1">Key ID (KID) in hex</label>
+                    <input type="text" id="k1" placeholder="Enter Key ID (hex)">
+                  </div>
+                  <div class="input-group">
+                    <label for="k2">Key in hex</label>
+                    <input type="text" id="k2" placeholder="Enter Key (hex)">
+                  </div>
+              </div>
+            </div>
+            <button id="loadButton">Load Manual Input</button>
+        </div>
+        <div id="error-display"></div>
+      </div>
+    </main>
+  </div>
+  
+  <nav id="floating-menu" class="floating-menu"></nav>
 
-    <script>
-        // Define playlist URL
-        const PLAYLIST_URL = 'https://converse.nathcreqtives.com/playlist.m3u';
-        
-        // Global variables
-        let player;
-        let ui;
-        let currentPlaylist = [];
-        let currentItemIndex = 0;
-
-        // Initialize Shaka Player
-        async function initApp() {
-            // Check if the browser supports the basic features we need
-            if (!shaka.Player.isBrowserSupported()) {
-                showError('Browser not supported! Please upgrade to a modern browser.');
-                return;
-            }
-
-            // Install built-in polyfills
-            shaka.polyfill.installAll();
-
-            const video = document.getElementById('video');
-            
-            // Create Player and UI
-            player = new shaka.Player(video);
-            ui = new shaka.ui.Overlay(player, video, document.getElementById('video-container'));
-            
-            // Configure player
-            player.configure({
-                streaming: {
-                    bufferingGoal: 30,
-                    rebufferingGoal: 5
-                }
-            });
-
-            // Set up event listeners
-            player.addEventListener('error', onPlayerError);
-            player.addEventListener('loading', () => {
-                document.getElementById('player-status').textContent = 'Loading media...';
-            });
-            player.addEventListener('loaded', () => {
-                document.getElementById('player-status').textContent = 'Media loaded';
-            });
-
-            // Load the playlist
-            await loadPlaylist();
-        }
-
-        // Load and parse the playlist
-        async function loadPlaylist() {
-            const playlistItems = document.getElementById('playlist-items');
-            const loadingElement = document.getElementById('playlist-loading');
-
-            try {
-                document.getElementById('player-status').textContent = 'Fetching playlist...';
-                
-                const response = await fetch(PLAYLIST_URL);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const playlistText = await response.text();
-                currentPlaylist = parseM3U(playlistText);
-                
-                // Display playlist items
-                displayPlaylistItems();
-                
-                // Auto-play the first item
-                if (currentPlaylist.length > 0) {
-                    playCurrentItem();
-                } else {
-                    showError('No playable streams found in the playlist');
-                }
-
-            } catch (error) {
-                console.error('Error loading playlist:', error);
-                showError('Failed to load playlist: ' + error.message);
-            } finally {
-                loadingElement.style.display = 'none';
-            }
-        }
-
-        // Parse M3U playlist
-        function parseM3U(playlistText) {
-            const items = [];
-            const lines = playlistText.split('\n');
-            let currentItem = {};
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                
-                if (line.startsWith('#EXTINF:')) {
-                    // Parse EXTINF line
-                    const match = line.match(/#EXTINF:(-?\d+),?(.*)/);
-                    if (match) {
-                        currentItem.duration = parseInt(match[1]);
-                        currentItem.title = match[2] || `Channel ${items.length + 1}`;
-                    }
-                } else if (line && !line.startsWith('#') && line.length > 0) {
-                    // This is a URL line
-                    if (line.startsWith('http')) {
-                        currentItem.url = line;
-                        
-                        // If no title was set, create one
-                        if (!currentItem.title) {
-                            currentItem.title = `Channel ${items.length + 1}`;
-                        }
-                        
-                        items.push({...currentItem});
-                        currentItem = {};
-                    }
-                }
-            }
-
-            return items;
-        }
-
-        // Display playlist items
-        function displayPlaylistItems() {
-            const playlistItems = document.getElementById('playlist-items');
-            playlistItems.innerHTML = '';
-
-            if (currentPlaylist.length === 0) {
-                playlistItems.innerHTML = `
-                    <div class="empty-playlist">
-                        <h3>No channels found</h3>
-                        <p>The playlist is empty or couldn't be parsed correctly.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            currentPlaylist.forEach((item, index) => {
-                const itemElement = document.createElement('div');
-                itemElement.className = 'playlist-item';
-                if (index === currentItemIndex) {
-                    itemElement.classList.add('active');
-                }
-                
-                itemElement.innerHTML = `
-                    <div class="item-number">${index + 1}</div>
-                    <div class="item-title">${item.title}</div>
-                `;
-                
-                itemElement.addEventListener('click', () => {
-                    currentItemIndex = index;
-                    playCurrentItem();
-                });
-                
-                playlistItems.appendChild(itemElement);
-            });
-        }
-
-        // Play current item
-        async function playCurrentItem() {
-            if (currentPlaylist.length === 0) return;
-
-            const item = currentPlaylist[currentItemIndex];
-            document.getElementById('player-status').textContent = `Loading: ${item.title}`;
-            document.getElementById('channel-name-display').textContent = item.title;
-            hideError();
-
-            try {
-                await player.load(item.url);
-                document.getElementById('player-status').textContent = `Playing: ${item.title}`;
-                
-                // Update active item in playlist
-                updateActivePlaylistItem();
-
-            } catch (error) {
-                console.error('Error loading media:', error);
-                showError('Error playing stream: ' + error.message);
-                
-                // Try next item if current fails
-                setTimeout(() => {
-                    currentItemIndex++;
-                    if (currentItemIndex >= currentPlaylist.length) {
-                        currentItemIndex = 0;
-                    }
-                    playCurrentItem();
-                }, 2000);
-            }
-        }
-
-        // Update active playlist item
-        function updateActivePlaylistItem() {
-            const items = document.querySelectorAll('.playlist-item');
-            items.forEach((item, index) => {
-                if (index === currentItemIndex) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
-            });
-        }
-
-        // Player error handler
-        function onPlayerError(event) {
-            console.error('Error code', event.detail.code, 'object', event.detail);
-            showError('Player error: ' + event.detail.message);
-        }
-
-        // Show error message
-        function showError(message) {
-            const errorElement = document.getElementById('error-message');
-            errorElement.textContent = message;
-            errorElement.style.display = 'block';
-        }
-
-        // Hide error message
-        function hideError() {
-            document.getElementById('error-message').style.display = 'none';
-        }
-
-        // Initialize the app when DOM is loaded
-        document.addEventListener('DOMContentLoaded', initApp);
-    </script>
+  <footer class="site-footer">
+    <p>&copy; 2025 Project Dev. All Rights Reserved.</p>
+    <p>Powered by Shaka Player (4.16.9)</p>
+  </footer>
+  <script src="js/script.js"></script>
 </body>
 </html>
