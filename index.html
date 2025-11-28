@@ -1,134 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-   <title>Stream Tester by Project Dev</title>
-   <meta name="theme-color" content="#000000">
-   <link rel="icon" type="image/png" href="assets/favicon-96x96.png" sizes="96x96" />
-   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
-   <link rel="shortcut icon" href="assets/favicon.ico" />
-   <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
-   <meta name="apple-mobile-web-app-title" content="Stream Tester" />
-   <link rel="manifest" href="assets/site.webmanifest" />
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-   <link href="https://fonts.cdnfonts.com/css/general-sans" rel="stylesheet">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaspace-font/neon.css">
-   <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
-   <link href="https://fonts.googleapis.com/css2?family=Rethink+Sans:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
-   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Text:wght@400;500;700&display=swap" rel="stylesheet">
-   <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:wght@400;500;700&display=swap" rel="stylesheet">
-   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-   <script src="https://unpkg.com/mux.js@5.10.0/dist/mux.js"></script>
-   <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.16.9/dist/shaka-player.ui.min.js"></script>
-   <link href="https://cdn.jsdelivr.net/npm/shaka-player@4.16.9/dist/controls.min.css" rel="stylesheet">
-   <link rel="stylesheet" href="css/style.css">
+<meta charset="UTF-8">
+<title>One-File Stream Player</title>
+
+<!-- Shaka Player CDN -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.3.5/dist/controls.css">
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.3.5/dist/shaka-player.ui.js"></script>
+
+<style>
+    body { 
+        font-family: Arial; 
+        background:#121212; 
+        color:white; 
+        margin:0; 
+        padding:20px;
+    }
+    #video-container {
+        width:100%;
+        max-width:900px;
+        margin:auto;
+        border:2px solid #333;
+        border-radius:10px;
+        overflow:hidden;
+    }
+    input, select, button {
+        width:100%;
+        padding:10px;
+        margin:8px 0;
+        border-radius:5px;
+        border:none;
+        font-size:15px;
+    }
+    button {
+        background:#0af;
+        color:black;
+        font-weight:bold;
+        cursor:pointer;
+    }
+    #controls { 
+        max-width:900px; 
+        margin:20px auto;
+    }
+    #error { color:red; font-size:14px; }
+</style>
 </head>
+
 <body>
-  <div class="container">
-     <header class="header">
-       <a href="/stream-tester">
-         <img src="assets/stream_tester_logo.svg" alt="Stream Tester Logo" class="logo-img">
-       </a>
-       <button id="menu-toggle-btn" class="menu-button" aria-label="Open menu">
-         <span class="material-symbols-rounded">menu</span>
-       </button>
-     </header>
-    <main class="grid-container">
-      <div class="player-wrapper">
-        <div id="video-container" data-shaka-player-container>
-          <video id="video" poster="assets/video_poster.svg" data-shaka-player autoplay></video>
-        </div>
-        <h2 id="channel-name-display">No Channel Loaded</h2>
-      </div>
 
-      <div class="card">
-        <div class="input-mode-switcher">
-            <button id="add-mode-btn" class="active">Playlist</button>
-            <button id="manual-mode-btn">Manual</button>
-        </div>
-        <div id="add-mode-container">
-            <h2>Load Playlist</h2>
-            <div class="input-group">
-                <label for="sourceSelector">Source</label>
-                <div class="select-wrapper">
-                  <select id="sourceSelector">
-                      <option value="playlist" selected>Upload</option>
-                      <option value="default">Samples</option>
-                  </select>
-                </div>
-            </div>
-            <div id="playlist-inputs">
-                <div class="input-group">
-                    <label for="m3uLink">Enter M3U Link or Upload File</label>
-                    <div class="m3u-input-container">
-                        <button id="upload-m3u-button" aria-label="Upload M3U file">
-                            <span class="material-symbols-rounded">add</span>
-                        </button>
-                        <input type="text" id="m3uLink" placeholder="Paste M3U playlist URL here">
-                        <input type="file" id="m3uFile" accept=".m3u,.m3u8" hidden>
-                    </div>
-                </div>
-                <button id="loadPlaylistButton">Load Playlist</button>
-            </div>
-            <hr>
-            <div class="input-group">
-              <label for="channelSelector">Select Channel</label>
-              <div class="select-wrapper">
-                <select id="channelSelector">
-                  <option value="">-- Select a source first --</option>
-                </select>
-              </div>
-            </div>
-        </div>
-        <div id="manual-mode-container" style="display: none;">
-            <h2>Manual Input</h2>
-            <div class="input-group">
-              <label for="manifestUri">Manifest URI</label>
-              <input type="text" id="manifestUri" placeholder="Enter HLS or MPEG-DASH URI">
-            </div>
-            <div class="drm-fields" style="display: none;">
-              <p style="font-size: 0.7rem; color: #888; margin-top: 1rem; margin-bottom: 0.5rem;">DRM (for MPEG-DASH only)</p>
-              <div class="input-group">
-                <label for="licenseTypeSelect">DRM Type</label>
-                <div class="select-wrapper">
-                  <select id="licenseTypeSelect">
-                      <option value="com.widevine.alpha" selected>License URL (com.widevine.alpha)</option>
-                      <option value="org.w3.clearkey">ClearKey (org.w3.clearkey)</option>
-                  </select>
-                </div>
-              </div>
-              <div id="license-url-container">
-                  <div class="input-group">
-                    <label for="licenseServerUrl">License Server URL</label>
-                    <input type="text" id="licenseServerUrl" placeholder="Enter license server URL">
-                  </div>
-              </div>
-              <div id="clearkey-container" style="display: none;">
-                  <div class="input-group">
-                    <label for="k1">Key ID (KID) in hex</label>
-                    <input type="text" id="k1" placeholder="Enter Key ID (hex)">
-                  </div>
-                  <div class="input-group">
-                    <label for="k2">Key in hex</label>
-                    <input type="text" id="k2" placeholder="Enter Key (hex)">
-                  </div>
-              </div>
-            </div>
-            <button id="loadButton">Load Manual Input</button>
-        </div>
-        <div id="error-display"></div>
-      </div>
-    </main>
-  </div>
-  
-  <nav id="floating-menu" class="floating-menu"></nav>
+<h2>One-File Stream Player</h2>
 
-  <footer class="site-footer">
-    <p>&copy; 2025 Project Dev. All Rights Reserved.</p>
-    <p>Powered by Shaka Player (4.16.9)</p>
-  </footer>
-  <script src="js/script.js"></script>
+<div id="video-container" data-shaka-player-container>
+    <video id="video" autoplay muted data-shaka-player></video>
+</div>
+
+<div id="controls">
+    <label>Manifest URL (HLS / MPD)</label>
+    <input id="manifest" placeholder="https://converse.nathcreqtives.com/playlist.m3u">
+
+    <label>DRM Type</label>
+    <select id="drmType">
+        <option value="none">None</option>
+        <option value="com.widevine.alpha">Widevine</option>
+        <option value="org.w3.clearkey">ClearKey</option>
+    </select>
+
+    <input id="licenseUrl" placeholder="Widevine License URL" style="display:none;">
+    <input id="ck_kid" placeholder="ClearKey KID (hex)" style="display:none;">
+    <input id="ck_key" placeholder="ClearKey KEY (hex)" style="display:none;">
+
+    <button onclick="loadStream()">PLAY</button>
+    <p id="error"></p>
+</div>
+
+<script>
+let player;
+
+document.addEventListener("DOMContentLoaded", () => {
+    shaka.polyfill.installAll();
+
+    if (!shaka.Player.isBrowserSupported()) {
+        showError("Your browser does not support Shaka Player.");
+        return;
+    }
+
+    const video = document.getElementById("video");
+    player = new shaka.Player(video);
+    player.addEventListener("error", onError);
+});
+
+function loadStream() {
+    const url = document.getElementById("manifest").value.trim();
+    const drm = document.getElementById("drmType").value;
+    const lic = document.getElementById("licenseUrl").value.trim();
+    const kid = document.getElementById("ck_kid").value.trim();
+    const key = document.getElementById("ck_key").value.trim();
+
+    const config = { drm: {} };
+
+    if (drm === "com.widevine.alpha" && lic) {
+        config.drm.servers = {
+            "com.widevine.alpha": lic
+        };
+    }
+
+    if (drm === "org.w3.clearkey" && kid && key) {
+        config.drm.clearKeys = {
+            [kid]: key
+        };
+    }
+
+    player.configure(config);
+
+    player.load(url)
+        .then(() => console.log("Playing:", url))
+        .catch(onError);
+}
+
+function onError(e) {
+    showError("Player Error: " + e.detail.code);
+    console.error(e);
+}
+
+function showError(msg) {
+    document.getElementById("error").textContent = msg;
+}
+
+document.getElementById("drmType").addEventListener("change", (e) => {
+    const t = e.target.value;
+
+    document.getElementById("licenseUrl").style.display =
+        t === "com.widevine.alpha" ? "block" : "none";
+
+    document.getElementById("ck_kid").style.display =
+        t === "org.w3.clearkey" ? "block" : "none";
+
+    document.getElementById("ck_key").style.display =
+        t === "org.w3.clearkey" ? "block" : "none";
+});
+</script>
+
 </body>
 </html>
