@@ -3,10 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shaka Player with DRM Support</title>
+    <title>Shaka Player - Playlist Viewer</title>
     <!-- Shaka Player CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.7/controls.css">
     <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --background-color: #1a1a1a;
+            --surface-color: #2d2d2d;
+            --text-color: #ffffff;
+            --text-secondary: #b3b3b3;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -15,10 +27,11 @@
         }
         
         body {
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            color: #fff;
+            background: linear-gradient(135deg, var(--secondary-color), var(--background-color));
+            color: var(--text-color);
             min-height: 100vh;
             padding: 20px;
+            line-height: 1.6;
         }
         
         .container {
@@ -36,16 +49,18 @@
             font-size: 2.5rem;
             margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            color: var(--primary-color);
         }
         
         .subtitle {
             font-size: 1.2rem;
             opacity: 0.9;
+            color: var(--text-secondary);
         }
         
         .player-container {
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             margin-bottom: 30px;
@@ -71,6 +86,8 @@
             justify-content: space-between;
             padding: 15px;
             background: rgba(0, 0, 0, 0.8);
+            flex-wrap: wrap;
+            gap: 10px;
         }
         
         .control-group {
@@ -82,113 +99,97 @@
         button {
             background: rgba(255, 255, 255, 0.1);
             border: none;
-            color: white;
+            color: var(--text-color);
             padding: 8px 15px;
-            border-radius: 5px;
+            border-radius: var(--border-radius);
             cursor: pointer;
-            transition: all 0.3s;
+            transition: var(--transition);
             display: flex;
             align-items: center;
             gap: 5px;
         }
         
         button:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--primary-color);
         }
         
         select {
             background: rgba(255, 255, 255, 0.1);
             border: none;
-            color: white;
+            color: var(--text-color);
             padding: 8px 15px;
-            border-radius: 5px;
+            border-radius: var(--border-radius);
             cursor: pointer;
         }
         
-        .input-container {
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
+        .playlist-container {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
             padding: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            margin-bottom: 30px;
         }
         
-        .input-section {
-            margin-bottom: 20px;
-        }
-        
-        .input-section h3 {
-            margin-bottom: 15px;
-            color: #ff9d00;
-        }
-        
-        .input-row {
+        .playlist-header {
             display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        .input-group {
-            flex: 1;
-            min-width: 200px;
+        .playlist-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
         }
         
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.5);
-            color: white;
-        }
-        
-        textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        
-        .examples-container {
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            margin-bottom: 30px;
-        }
-        
-        .examples-container h2 {
-            margin-bottom: 15px;
-            color: #ff9d00;
-        }
-        
-        .example-item {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .example-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .example-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #ff9d00;
-        }
-        
-        .example-details {
+        .playlist-info {
+            color: var(--text-secondary);
             font-size: 0.9rem;
-            opacity: 0.8;
+        }
+        
+        .playlist-items {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-radius: var(--border-radius);
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .playlist-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .playlist-item.active {
+            background: rgba(52, 152, 219, 0.3);
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .item-number {
+            width: 30px;
+            text-align: center;
+            font-weight: bold;
+            margin-right: 15px;
+            color: var(--text-secondary);
+        }
+        
+        .item-title {
+            flex: 1;
+        }
+        
+        .item-duration {
+            opacity: 0.7;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
         }
         
         .status-bar {
@@ -197,23 +198,14 @@
             padding: 10px 15px;
             background: rgba(0, 0, 0, 0.8);
             font-size: 0.9rem;
-            color: #ccc;
+            color: var(--text-secondary);
         }
         
         .error-message {
-            background: rgba(255, 0, 0, 0.2);
+            background: rgba(231, 76, 60, 0.2);
             color: #ff6b6b;
             padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            display: none;
-        }
-        
-        .success-message {
-            background: rgba(0, 255, 0, 0.2);
-            color: #6bff6b;
-            padding: 15px;
-            border-radius: 8px;
+            border-radius: var(--border-radius);
             margin-top: 20px;
             display: none;
         }
@@ -228,7 +220,7 @@
         .spinner {
             border: 3px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            border-top: 3px solid #fff;
+            border-top: 3px solid var(--primary-color);
             width: 30px;
             height: 30px;
             animation: spin 1s linear infinite;
@@ -238,6 +230,12 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        .empty-playlist {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
         }
         
         @media (max-width: 768px) {
@@ -250,8 +248,10 @@
                 justify-content: center;
             }
             
-            .input-row {
+            .playlist-header {
                 flex-direction: column;
+                gap: 10px;
+                text-align: center;
             }
         }
     </style>
@@ -259,8 +259,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>Shaka Player with DRM Support</h1>
-            <p class="subtitle">Play encrypted and clear content with manual DRM configuration</p>
+            <h1>Shaka Player - Playlist Viewer</h1>
+            <p class="subtitle">Playing your M3U playlist with full format compatibility</p>
         </header>
         
         <div class="player-container">
@@ -292,112 +292,29 @@
             </div>
             
             <div class="status-bar">
-                <div id="player-status">Ready to play</div>
+                <div id="player-status">Loading playlist...</div>
                 <div id="player-stats">-</div>
             </div>
         </div>
         
-        <div class="input-container">
-            <div class="input-section">
-                <h3>Media Configuration</h3>
-                <div class="input-row">
-                    <div class="input-group">
-                        <label for="manifest-url">Manifest URL</label>
-                        <input type="text" id="manifest-url" placeholder="https://example.com/manifest.mpd">
-                    </div>
-                    <div class="input-group">
-                        <label for="content-type">Content Type</label>
-                        <select id="content-type">
-                            <option value="application/dash+xml">MPEG-DASH</option>
-                            <option value="application/x-mpegurl">HLS</option>
-                            <option value="video/mp4">MP4</option>
-                            <option value="video/webm">WebM</option>
-                        </select>
-                    </div>
-                </div>
+        <div class="playlist-container">
+            <div class="playlist-header">
+                <h2 class="playlist-title">Playlist</h2>
+                <div class="playlist-info" id="playlist-info">Loading...</div>
             </div>
             
-            <div class="input-section">
-                <h3>DRM Configuration</h3>
-                <div class="input-row">
-                    <div class="input-group">
-                        <label for="drm-type">DRM System</label>
-                        <select id="drm-type">
-                            <option value="none">No DRM</option>
-                            <option value="com.widevine.alpha">Widevine</option>
-                            <option value="com.microsoft.playready">PlayReady</option>
-                            <option value="com.apple.fps">FairPlay</option>
-                            <option value="org.w3.clearkey">ClearKey</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="license-url">License Server URL</label>
-                        <input type="text" id="license-url" placeholder="https://example.com/license">
-                    </div>
-                </div>
-                
-                <div class="input-row" id="clearkey-config" style="display: none;">
-                    <div class="input-group">
-                        <label for="key-id">Key ID (KID)</label>
-                        <input type="text" id="key-id" placeholder="dee27lb3e6b3532791467a534433aa34">
-                    </div>
-                    <div class="input-group">
-                        <label for="key">Key</label>
-                        <input type="text" id="key" placeholder="845d222b513438449c21d22e8380864d">
-                    </div>
-                </div>
-                
-                <div class="input-row">
-                    <div class="input-group">
-                        <label for="headers">License Headers (JSON)</label>
-                        <textarea id="headers" placeholder='{"X-Custom-Header": "value"}'></textarea>
-                    </div>
-                </div>
+            <div class="loading" id="playlist-loading">
+                <div class="spinner"></div>
+                <span>Loading playlist...</span>
             </div>
             
-            <div class="input-row">
-                <button id="load-content">Load Content</button>
-                <button id="reset-form">Reset Form</button>
-            </div>
-        </div>
-        
-        <div class="examples-container">
-            <h2>Example Configurations</h2>
-            
-            <div class="example-item" id="example1">
-                <div class="example-title">Example 1: Encrypted MPEG-DASH with Widevine</div>
-                <div class="example-details">
-                    Manifest URL: https://storage.googleapis.com/shaka-demo-assets/angel-one-widevine/dash.mpd<br>
-                    DRM Type: Widevine<br>
-                    License URL: https://culp-shaka-proxy.appspot.com/no_auth
-                </div>
-            </div>
-            
-            <div class="example-item" id="example2">
-                <div class="example-title">Example 2: Encrypted MPEG-DASH with ClearKey</div>
-                <div class="example-details">
-                    Manifest URL: https://storage.googleapis.com/shaka-demo-assets/sintel-clearkey/dash.mpd<br>
-                    DRM Type: ClearKey<br>
-                    Key ID: dee27lb3e6b3532791467a534433aa34<br>
-                    Key: 845d222b513438449c21d22e8380864d
-                </div>
-            </div>
-            
-            <div class="example-item" id="example3">
-                <div class="example-title">Example 3: Clear Content (No DRM)</div>
-                <div class="example-details">
-                    Manifest URL: https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd<br>
-                    DRM Type: None
-                </div>
+            <div class="playlist-items" id="playlist-items">
+                <!-- Playlist items will be inserted here -->
             </div>
         </div>
         
         <div class="error-message" id="error-message">
             <!-- Error messages will appear here -->
-        </div>
-        
-        <div class="success-message" id="success-message">
-            <!-- Success messages will appear here -->
         </div>
     </div>
 
@@ -405,6 +322,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.7/shaka-player.ui.js"></script>
     
     <script>
+        // Define playlist URL
+        const PLAYLIST_URL = 'https://converse.nathcreqtives.com/playlist.m3u';
+
         // Initialize Shaka Player
         document.addEventListener('DOMContentLoaded', function() {
             // Install built-in polyfills to patch browser incompatibilities
@@ -459,49 +379,6 @@
                 }
             });
             
-            // Set up DRM type change handler
-            document.getElementById('drm-type').addEventListener('change', function() {
-                const clearkeyConfig = document.getElementById('clearkey-config');
-                if (this.value === 'org.w3.clearkey') {
-                    clearkeyConfig.style.display = 'flex';
-                } else {
-                    clearkeyConfig.style.display = 'none';
-                }
-            });
-            
-            // Set up load content button
-            document.getElementById('load-content').addEventListener('click', loadContent);
-            
-            // Set up reset form button
-            document.getElementById('reset-form').addEventListener('click', resetForm);
-            
-            // Set up example buttons
-            document.getElementById('example1').addEventListener('click', function() {
-                document.getElementById('manifest-url').value = 'https://storage.googleapis.com/shaka-demo-assets/angel-one-widevine/dash.mpd';
-                document.getElementById('drm-type').value = 'com.widevine.alpha';
-                document.getElementById('license-url').value = 'https://culp-shaka-proxy.appspot.com/no_auth';
-                document.getElementById('content-type').value = 'application/dash+xml';
-                document.getElementById('headers').value = '';
-            });
-            
-            document.getElementById('example2').addEventListener('click', function() {
-                document.getElementById('manifest-url').value = 'https://storage.googleapis.com/shaka-demo-assets/sintel-clearkey/dash.mpd';
-                document.getElementById('drm-type').value = 'org.w3.clearkey';
-                document.getElementById('license-url').value = '';
-                document.getElementById('key-id').value = 'dee27lb3e6b3532791467a534433aa34';
-                document.getElementById('key').value = '845d222b513438449c21d22e8380864d';
-                document.getElementById('content-type').value = 'application/dash+xml';
-                document.getElementById('headers').value = '';
-            });
-            
-            document.getElementById('example3').addEventListener('click', function() {
-                document.getElementById('manifest-url').value = 'https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd';
-                document.getElementById('drm-type').value = 'none';
-                document.getElementById('license-url').value = '';
-                document.getElementById('content-type').value = 'application/dash+xml';
-                document.getElementById('headers').value = '';
-            });
-            
             // Event listeners for player events
             player.addEventListener('loading', function() {
                 document.getElementById('player-status').textContent = 'Loading...';
@@ -509,103 +386,152 @@
             
             player.addEventListener('loaded', function() {
                 document.getElementById('player-status').textContent = 'Loaded';
-                showSuccess('Content loaded successfully!');
             });
             
             player.addEventListener('error', function(event) {
                 console.error('Error code', event.detail.code, 'object', event.detail);
                 showError('Error playing media: ' + event.detail.message);
             });
+            
+            // Load the playlist automatically on page load
+            loadPlaylist(player);
         });
         
-        // Function to load content with DRM configuration
-        async function loadContent() {
-            const manifestUrl = document.getElementById('manifest-url').value;
-            const drmType = document.getElementById('drm-type').value;
-            const licenseUrl = document.getElementById('license-url').value;
-            const keyId = document.getElementById('key-id').value;
-            const key = document.getElementById('key').value;
-            const headersText = document.getElementById('headers').value;
-            const contentType = document.getElementById('content-type').value;
+        // Function to load and parse the playlist
+        async function loadPlaylist(player) {
+            const playlistItems = document.getElementById('playlist-items');
+            const loadingElement = document.getElementById('playlist-loading');
+            const playlistInfo = document.getElementById('playlist-info');
             
-            const video = document.getElementById('video');
-            const player = video.__ui_ ? video.__ui_.getPlayer() : null;
-            
-            if (!player) {
-                showError('Player not initialized');
-                return;
-            }
-            
-            if (!manifestUrl) {
-                showError('Please enter a manifest URL');
-                return;
-            }
-            
-            document.getElementById('player-status').textContent = 'Loading content...';
+            // Show loading indicator
+            loadingElement.style.display = 'flex';
+            playlistItems.innerHTML = '';
             hideError();
-            hideSuccess();
             
             try {
-                // Configure DRM if needed
-                if (drmType !== 'none') {
-                    const drmConfiguration = {
-                        servers: {}
-                    };
-                    
-                    // Set license server for Widevine, PlayReady, etc.
-                    if (licenseUrl && drmType !== 'org.w3.clearkey') {
-                        drmConfiguration.servers[drmType] = licenseUrl;
-                    }
-                    
-                    // Set headers if provided
-                    if (headersText) {
-                        try {
-                            const headers = JSON.parse(headersText);
-                            drmConfiguration.advanced = {};
-                            drmConfiguration.advanced[drmType] = {
-                                audioRobustness: 'SW_SECURE_CRYPTO',
-                                videoRobustness: 'SW_SECURE_CRYPTO',
-                                serverCertificate: null
-                            };
-                            
-                            // Add headers for license requests
-                            drmConfiguration.advanced[drmType].licenseRequestHeaders = headers;
-                        } catch (e) {
-                            console.warn('Invalid headers JSON, ignoring headers');
-                        }
-                    }
-                    
-                    // Configure ClearKey if selected
-                    if (drmType === 'org.w3.clearkey') {
-                        if (!keyId || !key) {
-                            showError('Both Key ID and Key are required for ClearKey');
-                            return;
-                        }
-                        
-                        drmConfiguration.advanced = {
-                            [drmType]: {
-                                clearKeys: {
-                                    [keyId]: key
-                                }
-                            }
-                        };
-                    }
-                    
-                    player.configure({
-                        drm: drmConfiguration
-                    });
-                } else {
-                    // Clear DRM configuration
-                    player.configure({
-                        drm: {
-                            servers: {}
-                        }
-                    });
+                const response = await fetch(PLAYLIST_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                // Load the manifest
-                await player.load(manifestUrl, 0, contentType);
-                document.getElementById('player-status').textContent = 'Content loaded';
+                const playlistText = await response.text();
+                const playlistLines = playlistText.split('\n');
+                
+                // Parse M3U playlist
+                const items = [];
+                let currentItem = {};
+                
+                for (let i = 0; i < playlistLines.length; i++) {
+                    const line = playlistLines[i].trim();
+                    
+                    if (line.startsWith('#EXTINF:')) {
+                        // Extract duration and title
+                        const match = line.match(/#EXTINF:(-?\d+),(.*)/);
+                        if (match) {
+                            currentItem.duration = match[1];
+                            currentItem.title = match[2];
+                        }
+                    } else if (line && !line.startsWith('#') && !line.startsWith('http')) {
+                        // This is a URL line
+                        currentItem.url = line;
+                        items.push(currentItem);
+                        currentItem = {};
+                    } else if (line.startsWith('http')) {
+                        // Direct URL without EXTINF
+                        currentItem.url = line;
+                        currentItem.title = `Media ${items.length + 1}`;
+                        currentItem.duration = 'Unknown';
+                        items.push(currentItem);
+                        currentItem = {};
+                    }
+                }
+                
+                // If no items were found with standard parsing, try a simpler approach
+                if (items.length === 0) {
+                    for (let i = 0; i < playlistLines.length; i++) {
+                        const line = playlistLines[i].trim();
+                        if (line.startsWith('http')) {
+                            items.push({
+                                url: line,
+                                title: `Media ${items.length + 1}`,
+                                duration: 'Unknown'
+                            });
+                        }
+                    }
+                }
+                
+                // Display playlist info
+                playlistInfo.textContent = `${items.length} items`;
+                
+                // Display playlist items
+                if (items.length > 0) {
+                    items.forEach((item, index) => {
+                        const itemElement = document.createElement('div');
+                        itemElement.className = 'playlist-item';
+                        itemElement.innerHTML = `
+                            <div class="item-number">${index + 1}</div>
+                            <div class="item-title">${item.title}</div>
+                            <div class="item-duration">${formatDuration(item.duration)}</div>
+                        `;
+                        
+                        itemElement.addEventListener('click', function() {
+                            // Remove active class from all items
+                            document.querySelectorAll('.playlist-item').forEach(el => {
+                                el.classList.remove('active');
+                            });
+                            
+                            // Add active class to clicked item
+                            this.classList.add('active');
+                            
+                            // Load the selected media
+                            loadMedia(player, item.url, item.title);
+                        });
+                        
+                        playlistItems.appendChild(itemElement);
+                    });
+                    
+                    // Auto-play the first item
+                    if (items.length > 0) {
+                        const firstItem = playlistItems.querySelector('.playlist-item');
+                        firstItem.classList.add('active');
+                        loadMedia(player, items[0].url, items[0].title);
+                    }
+                } else {
+                    playlistItems.innerHTML = `
+                        <div class="empty-playlist">
+                            <h3>No playable media found</h3>
+                            <p>The playlist is empty or couldn't be parsed correctly.</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error loading playlist:', error);
+                showError('Failed to load playlist: ' + error.message);
+                
+                playlistItems.innerHTML = `
+                    <div class="empty-playlist">
+                        <h3>Error loading playlist</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                // Hide loading indicator
+                loadingElement.style.display = 'none';
+            }
+        }
+        
+        // Function to load a media item
+        async function loadMedia(player, url, title) {
+            const video = document.getElementById('video');
+            
+            document.getElementById('player-status').textContent = `Loading: ${title}`;
+            hideError();
+            
+            try {
+                // Load the media with Shaka Player
+                await player.load(url);
+                document.getElementById('player-status').textContent = `Playing: ${title}`;
                 
                 // Update play/pause button
                 document.getElementById('play-pause').innerHTML = '<span>⏸️ Pause</span>';
@@ -617,8 +543,8 @@
                 setupAudioTrackSelector(player);
                 
             } catch (error) {
-                console.error('Error loading content:', error);
-                showError('Error loading content: ' + error.message);
+                console.error('Error loading media:', error);
+                showError('Error playing media: ' + error.message);
             }
         }
         
@@ -688,18 +614,13 @@
             });
         }
         
-        // Function to reset the form
-        function resetForm() {
-            document.getElementById('manifest-url').value = '';
-            document.getElementById('drm-type').value = 'none';
-            document.getElementById('license-url').value = '';
-            document.getElementById('key-id').value = '';
-            document.getElementById('key').value = '';
-            document.getElementById('headers').value = '';
-            document.getElementById('content-type').value = 'application/dash+xml';
-            document.getElementById('clearkey-config').style.display = 'none';
-            hideError();
-            hideSuccess();
+        // Helper function to format duration
+        function formatDuration(seconds) {
+            if (isNaN(seconds) || seconds === 'Unknown') return 'Unknown';
+            
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
         
         // Helper function to show error messages
@@ -712,18 +633,6 @@
         // Helper function to hide error messages
         function hideError() {
             document.getElementById('error-message').style.display = 'none';
-        }
-        
-        // Helper function to show success messages
-        function showSuccess(message) {
-            const successElement = document.getElementById('success-message');
-            successElement.textContent = message;
-            successElement.style.display = 'block';
-        }
-        
-        // Helper function to hide success messages
-        function hideSuccess() {
-            document.getElementById('success-message').style.display = 'none';
         }
     </script>
 </body>
