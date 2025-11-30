@@ -22,7 +22,7 @@
         #video { width: 100%; height: 100%; object-fit: contain; }
         #brand-logo { position: absolute; top: 10px; left: 10px; z-index: 10; display: flex; align-items: center; }
         #brand-circle { width: 40px; height: 40px; background: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; text-align: center; line-height: 1.1; box-shadow: 0 0 10px rgba(255, 0, 0, 0.7); }
-        #maximize-btn { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; }
+        #maximize-btn { position: absolute; top: 10px; right: 10px; background: rgba(0, 0, 0, 0.7); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; }
         #maximize-btn:active { background: rgba(97, 218, 251, 0.8); }
         #controls-container { flex: 1; background: #2d2d2d; display: flex; flex-direction: column; height: 60vh; overflow: hidden; }
         #channel-info { padding: 8px 15px; background: #3c4043; border-bottom: 1px solid #444; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
@@ -184,6 +184,9 @@
                 shaka.polyfill.installAll();
                 this.player = new shaka.Player(document.getElementById('video'));
 
+                // Optional: set a global default DRM server (won't override per-play logic)
+                // this.player.configure({ drm: { servers: { 'com.widevine.alpha': this.convergeLicense } } });
+
                 this.player.addEventListener('loading', () => {
                     document.getElementById('loading').style.display = 'block';
                     this.updateChannelStatus('Loading...');
@@ -233,21 +236,26 @@
             parsePlaylist(content) {
                 const m3u8Interpreter = new M3U8Interpreter(content);
                 m3u8Interpreter.parse();
-                this.channels = m3u8Interpreter.getChannels();
+                this.channels = m3u8Interpreter.getChannels() || [];
 
                 this.extractCategories();
 
                 const urls = m3u8Interpreter.getUrlTvg();
                 if (urls && urls.length > 0) {
-                    this.xmlepg = new XMLEPG();
-                    this.xmlepg.setPlaylistChannels(this.channels);
-                    this.xmlepg.load(urls);
+                    try {
+                        this.xmlepg = new XMLEPG();
+                        this.xmlepg.setPlaylistChannels(this.channels);
+                        this.xmlepg.load(urls);
+                    } catch (e) {
+                        console.warn('EPG load failed', e);
+                    }
                 }
 
                 this.updateChannelList();
                 this.updateQuickChannels();
 
                 if (this.channels.length > 0) {
+                    // play first playlist channel by default
                     this.playChannel(0);
                 }
             }
@@ -283,7 +291,7 @@
                 const isFavorite = this.favorites.includes(index);
 
                 channelItem.innerHTML = `
-                    <img src="${channel.tvgLogo || ''}" alt="${channel.channelName || ''}" class="channel-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNjFkYWZiIi8+Cjx0ZXh0IHg9IjEyIiB5PSIxMiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+VFY8L3RleHQ+Cjwvc3ZnPgo='">
+                    <img src="${channel.tvgLogo || ''}" alt="${channel.channelName || ''}" class="channel-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNjFkYWZiIi8+PHRleHQgeD0iMTIiIHk9IjEyIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5UVjwvdGV4dD4='">
                     <span class="channel-name">${channel.channelName || 'Unknown'}</span>
                     ${isFavorite ? '<span class="channel-fav"><i class="fas fa-star"></i></span>' : ''}
                 `;
@@ -310,10 +318,9 @@
                     this.convergeChannels.forEach((channel, idx) => {
                         const quickChannel = document.createElement('div');
                         quickChannel.className = 'quick-channel';
-                        if (false) quickChannel.classList.add('active');
 
                         quickChannel.innerHTML = `
-                            <img src="${channel.tvgLogo}" alt="${channel.channelName}" class="channel-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNjFkYWZiIi8+Cjx0ZXh0IHg9IjEyIiB5PSIxMiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+VFY8L3RleHQ+Cjwvc3ZnPgo='">
+                            <img src="${channel.tvgLogo || ''}" alt="${channel.channelName || ''}" class="channel-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNjFkYWZiIi8+PHRleHQgeD0iMTIiIHk9IjEyIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5UVjwvdGV4dD4='">
                             <span class="channel-name">${channel.channelName}</span>
                             ${channel.drm ? '<span class="channel-fav"><i class="fas fa-lock"></i></span>' : ''}
                         `;
@@ -340,7 +347,7 @@
                 }
 
                 channelsToShow.forEach((channel) => {
-                    const originalIndex = this.channels.findIndex(c => c.manifestUrl === channel.manifestUrl);
+                    const originalIndex = this.channels.findIndex(c => (c.manifestUrl || c.url || c.file) === (channel.manifestUrl || channel.url || channel.file));
                     const quickChannel = document.createElement('div');
                     quickChannel.className = 'quick-channel';
                     if (originalIndex === this.currentChannelIndex) quickChannel.classList.add('active');
@@ -348,14 +355,13 @@
                     const isFavorite = this.favorites.includes(originalIndex);
 
                     quickChannel.innerHTML = `
-                        <img src="${channel.tvgLogo || ''}" alt="${channel.channelName || ''}" class="channel-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNjFkYWZiIi8+Cjx0ZXh0IHg9IjEyIiB5PSIxMiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+VFY8L3RleHQ+Cjwvc3ZnPgo='">
+                        <img src="${channel.tvgLogo || ''}" alt="${channel.channelName || ''}" class="channel-logo" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjNjFkYWZiIi8+PHRleHQgeD0iMTIiIHk9IjEyIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMwMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5UVjwvdGV4dD4='">
                         <span class="channel-name">${channel.channelName}</span>
                         ${isFavorite ? '<span class="channel-fav"><i class="fas fa-star"></i></span>' : ''}
                     `;
 
                     quickChannel.addEventListener('click', () => {
-                        // use index of channel in this.channels
-                        const idx = this.channels.findIndex(c => c.manifestUrl === channel.manifestUrl);
+                        const idx = this.channels.findIndex(c => (c.manifestUrl || c.url || c.file) === (channel.manifestUrl || channel.url || channel.file));
                         if (idx >= 0) this.playChannel(idx);
                     });
 
@@ -365,60 +371,68 @@
                 if (this.currentCategory === 'all') this.showToast(`Loaded ${this.channels.length} channels`);
             }
 
-            // Play existing playlist channel (Cignal or others parsed from playlist)
-            playChannel(index) {
-                if (index < 0 || index >= this.channels.length) return;
+            // PLAY channel from playlist (Cignal / other)
+            async playChannel(index) {
+                if (typeof index !== 'number' || index < 0 || index >= this.channels.length) {
+                    console.error('Invalid channel index', index);
+                    return;
+                }
 
                 this.currentChannelIndex = index;
                 const channel = this.channels[index];
-
                 this.addToRecent(index);
 
                 try {
-                    // If the channel has license info embedded (clearKeys etc), use existing logic
-                    let licenseKey = channel.licenseKey;
-                    if (licenseKey && !Array.isArray(licenseKey)) {
-                        try {
-                            licenseKey = JSON.parse(decodeURIComponent(licenseKey));
-                        } catch (e) {
-                            // leave as-is if parse fails
+                    // Determine manifest URL from common properties
+                    const manifest = channel.manifestUrl || channel.url || channel.file;
+                    if (!manifest) throw new Error('No manifest URL for channel');
+
+                    // DRM switching logic:
+                    // If the manifest URL is Converge (contains domain), use convergeLicense.
+                    // Otherwise, attempt to use channel-provided license (do not override Cignal flow).
+                    if (typeof manifest === 'string' && manifest.includes('converse.nathcreqtives.com')) {
+                        // Converge case (shouldn't normally happen here, but handle if playlist contains converge URLs)
+                        this.player.configure({
+                            drm: {
+                                servers: { 'com.widevine.alpha': this.convergeLicense }
+                            }
+                        });
+                    } else {
+                        // For playlist channels: if channel has embedded licenseKey info, apply it (clearKeys)
+                        let licenseKey = channel.licenseKey || channel.license || null;
+                        if (licenseKey && !Array.isArray(licenseKey)) {
+                            // some playlists put JSON encoded key in licenseKey
+                            try { licenseKey = JSON.parse(decodeURIComponent(licenseKey)); } catch(e) { /* keep as-is */ }
+                        }
+
+                        if (Array.isArray(licenseKey)) {
+                            // apply clearKeys (if present)
+                            const clearKeys = {};
+                            licenseKey.forEach(pair => { if (pair.keyId && pair.key) clearKeys[pair.keyId] = pair.key; });
+                            this.player.configure({ drm: { clearKeys }});
+                        } else if (typeof licenseKey === 'string' && licenseKey.startsWith('http')) {
+                            // license server URL provided in playlist - set as server for widevine
+                            this.player.configure({ drm: { servers: { 'com.widevine.alpha': licenseKey } }});
+                        } else {
+                            // No playlist DRM info: reset DRM servers (do not override other channels)
+                            this.player.configure({ drm: { servers: {} }});
                         }
                     }
 
-                    if (licenseKey && Array.isArray(licenseKey)) {
-                        licenseKey.forEach(pair => {
-                            this.player.configure({
-                                drm: {
-                                    clearKeys: {
-                                        [pair.keyId]: pair.key
-                                    }
-                                }
-                            });
-                        });
-                    } else {
-                        // Reset DRM servers if channel doesn't specify (don't touch Cignal-specific behavior)
-                        this.player.configure({ drm: { servers: {} }});
-                    }
-
-                    // Load manifest
-                    const manifest = channel.manifestUrl || channel.url || channel.file;
-                    if (!manifest) throw new Error('No manifest for channel');
-                    this.player.load(manifest);
-
-                    // Update UI
+                    await this.player.load(manifest);
                     this.updateChannelInfo(channel.channelName || 'Channel');
                     this.updateFavoriteButton();
                     this.updateChannelList();
                     this.updateQuickChannels();
                     this.showToast(`Now playing: ${channel.channelName || 'Channel'}`);
-                } catch (error) {
-                    console.error('Error playing channel:', error);
+                } catch (err) {
+                    console.error('playChannel error', err);
                     this.showToast('Error playing channel');
                     this.updateChannelStatus('Error');
                 }
             }
 
-            // Play converge channel (separate list, do NOT modify original this.channels order)
+            // Play converge-specific channel (use converge list + converge license)
             async playConvergeChannel(idx) {
                 const channel = this.convergeChannels[idx];
                 if (!channel) {
@@ -426,7 +440,7 @@
                     return;
                 }
 
-                // Add to recent as a synthetic entry (we store string ids for converge to avoid index conflicts)
+                // Add to converge recent
                 this.addToRecentConverge(channel.id);
 
                 try {
@@ -440,13 +454,10 @@
                             }
                         });
                     } else {
-                        // reset if no drm
                         this.player.configure({ drm: { servers: {} }});
                     }
 
                     await this.player.load(channel.manifestUrl);
-
-                    // Update UI (we use channelName)
                     this.updateChannelInfo(channel.channelName);
                     this.updateFavoriteButton();
                     this.updateQuickChannels();
@@ -459,7 +470,7 @@
             }
 
             addToRecent(index) {
-                // Remove if already in recent
+                // numeric indexes only (playlist channels)
                 this.recentChannels = this.recentChannels.filter(i => i !== index);
                 this.recentChannels.unshift(index);
                 if (this.recentChannels.length > 5) this.recentChannels = this.recentChannels.slice(0,5);
@@ -467,9 +478,7 @@
                 this.updateRecentChannelsUI();
             }
 
-            // separate recent for converge (store string ids to avoid clashing with numeric indexes)
             addToRecentConverge(convId) {
-                // keep a separate converge recent list stored under 'iptv_recent_converge'
                 let convRecent = JSON.parse(localStorage.getItem('iptv_recent_converge') || '[]');
                 convRecent = convRecent.filter(id => id !== convId);
                 convRecent.unshift(convId);
@@ -482,9 +491,7 @@
                 const recentContainer = document.getElementById('recent-channels');
                 recentContainer.innerHTML = '';
 
-                // numeric recent (playlist channels)
-                const numericRecent = this.recentChannels.filter(i => typeof i === 'number').slice(0,5);
-                // converge recent
+                const numericRecent = (this.recentChannels || []).filter(i => typeof i === 'number').slice(0,5);
                 const convRecent = JSON.parse(localStorage.getItem('iptv_recent_converge') || '[]').slice(0,5);
 
                 if (numericRecent.length === 0 && convRecent.length === 0) {
@@ -514,7 +521,7 @@
                     const recentEl = document.createElement('div');
                     recentEl.className = 'recent-channel';
                     recentEl.innerHTML = `
-                        <img src="${channel.tvgLogo}" alt="${channel.channelName}" style="width:14px;height:14px;border-radius:2px;margin-right:4px;" onerror="this.style.display='none'">
+                        <img src="${channel.tvgLogo || ''}" alt="${channel.channelName || ''}" style="width:14px;height:14px;border-radius:2px;margin-right:4px;" onerror="this.style.display='none'">
                         <span>${channel.channelName} (C)</span>
                     `;
                     recentEl.addEventListener('click', () => {
@@ -606,9 +613,9 @@
 
             filterChannels(searchTerm) {
                 const channelItems = document.querySelectorAll('.channel-item');
-                const searchLower = searchTerm.toLowerCase();
+                const searchLower = (searchTerm || '').toLowerCase();
                 channelItems.forEach(item => {
-                    const channelName = item.querySelector('.channel-name').textContent.toLowerCase();
+                    const channelName = (item.querySelector('.channel-name')?.textContent || '').toLowerCase();
                     item.style.display = channelName.includes(searchLower) ? 'flex' : 'none';
                 });
             }
