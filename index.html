@@ -162,7 +162,7 @@
                 this.currentCategory = 'all';
 
                 // Converge playlist (from your provided list)
-                this.convergeLicense = "https://key.nathcreqtives.com/widevine/?deviceId=02:00:00:00:00:00";
+                this.convergeLicense = "https://ottmdrm.comclark.com/widevine/";
                 this.convergeChannels = [
                     { id: 'conv-1143', channelName: "GTV", tvgLogo: "https://ottepg8.comclark.com:8443/iptvepg/images/markurl/mark_1723126332757.png", manifestUrl: "https://converse.nathcreqtives.com/1143/manifest.mpd", drm: true },
                     { id: 'conv-1088', channelName: "TV5", tvgLogo: "https://ottepg8.comclark.com:8443/iptvepg/images/markurl/mark_1723134335547.png", manifestUrl: "https://converse.nathcreqtives.com/1088/manifest.mpd", drm: true },
@@ -209,7 +209,7 @@
             }
 
             async loadDefaultPlaylist() {
-                const m3u8Link = 'https://converse.nathcreqtives.com/playlist.m3u?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJFZ2l0MiIsImlhdCI6MTc2NzAxNjE2NSwiZXhwIjoxNzY3NDQ3NzYxLCJhY2NvdW50RXhwaXJlZCI6ZmFsc2UsImFjY291bnRFeHBpcmVzQXQiOjE3Njc0NDc3NjF9.e2f1WowM0eJ1Gkx70eakAR5AchjRSmVId4jkrrW-SC8';
+                const m3u8Link = 'https://raw.githubusercontent.com/reiyhbit/iptv/refs/heads/main/newconverge.m3u';
                 await this.loadPlaylistFromUrl(m3u8Link);
             }
 
