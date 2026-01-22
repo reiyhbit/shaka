@@ -1,281 +1,121 @@
- <!DOCTYPE html>
- <html lang="en">
- <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elektriko-like IPTV with Shaka Player</title>
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>IPTV Mobile · Shaka (One-file)</title>
+
+  <!-- Shaka Player -->
+  <script src="https://unpkg.com/shaka-player@4.9.2/dist/shaka-player.ui.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/shaka-player@4.9.2/dist/controls.css" />
+
   <style>
-   /* Basic CSS - Adapt to Elektriko's Dark Theme */
-   body {
-    font-family: sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #121212; /* Dark background */
-    color: #fff; /* White text */
-   }
-
-   .container {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 10px;
-   }
-
-   /* Header */
-   .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    background-color: #212121;
-   }
-
-   .header h1 {
-    margin: 0;
-    font-size: 1.2em;
-   }
-
-   .online-count {
-    font-size: 0.8em;
-    color: #9e9e9e;
-   }
-
-   /* Video Container */
-   .video-container {
-    position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    height: 0;
-    overflow: hidden;
-    margin-bottom: 10px;
-   }
-
-   /* Style the video element to fill its container. */
-   #video {
-    width: 100%;
-    height: 100%;
-   }
-
-   /* Controls */
-   .controls {
-    display: flex;
-    justify-content: space-around;
-    padding: 5px;
-    background-color: #212121;
-   }
-
-   .controls button {
-    background-color: #333;
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
-    cursor: pointer;
-   }
-
-   /* Channel List */
-   .channel-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-   }
-
-   .channel-list li {
-    background-color: #212121;
-    border-bottom: 1px solid #333;
-    padding: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* For the heart icon */
-   }
-
-   .channel-list li:hover {
-    background-color: #333;
-   }
-
-   .channel-list li img {
-    width: 30px;
-    height: 20px;
-    margin-right: 5px;
-    vertical-align: middle;
-   }
-
-   .channel-list li span {
-    flex-grow: 1; /* Take up remaining space */
-   }
-
-   .channel-list li .heart {
-    color: #9e9e9e; /* Light grey heart */
-   }
-
-   /* Search Bar */
-   .search-bar {
-    background-color: #333;
-    padding: 5px;
-    margin-bottom: 10px;
-   }
-
-   .search-bar input[type="text"] {
-    width: 100%;
-    padding: 8px;
-    background-color: #444;
-    color: #fff;
-    border: none;
-   }
-
-   /* Hide DRM Channels */
-   .hide-drm {
-    margin-bottom: 10px;
-    padding: 5px;
-   }
-
-   /* Utility Classes (e.g., for layout) */
-   .flex-row {
-    display: flex;
-    align-items: center;
-   }
+    :root { --bg:#0b0f14; --panel:#121821; --text:#e8eef7; --muted:#9fb0c7; --accent:#4cc9f0; }
+    *{box-sizing:border-box} html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui}
+    .topbar,.bottombar{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--panel);position:sticky;z-index:10}
+    .topbar{top:0}.bottombar{bottom:0;justify-content:space-between}
+    .topbar h1{margin:0;font-size:1.1rem}
+    .topbar input{flex:1;padding:.5rem .75rem;border-radius:.6rem;border:1px solid #1f2733;background:#0e141c;color:var(--text)}
+    .layout{display:grid;grid-template-columns:1fr}
+    .sidebar{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;padding:.75rem;overflow-y:auto;max-height:40vh}
+    @media(min-width:900px){.layout{grid-template-columns:320px 1fr;height:calc(100vh - 104px)}.sidebar{max-height:unset;border-right:1px solid #1f2733}}
+    .channel{display:flex;align-items:center;gap:.6rem;padding:.6rem;border-radius:.6rem;background:#0e141c;border:1px solid #1f2733;cursor:pointer}
+    .channel:hover{border-color:var(--accent)}
+    .logo{width:36px;height:36px;border-radius:.4rem;background:#1a2230;display:grid;place-items:center;color:var(--muted);font-size:.8rem;overflow:hidden}
+    .meta{display:grid}.title{font-weight:600;font-size:.95rem}.cat{font-size:.75rem;color:var(--muted)}
+    .player-wrap{padding:.75rem}
+    .video-container{position:relative;aspect-ratio:16/9;background:#000;border-radius:.6rem;overflow:hidden;border:1px solid #1f2733}
+    .shaka-controls-container{--shaka-controls-bg:rgba(0,0,0,.35)}
+    .now-playing{margin-top:.5rem;color:var(--muted)}
+    .controls-extra{display:flex;gap:.5rem;margin-top:.5rem}
+    .controls-extra button{flex:1;padding:.5rem;border-radius:.6rem;border:1px solid #1f2733;background:#0e141c;color:var(--text)}
+    .volume-slider{flex:2}
   </style>
- </head>
- <body>
-  <div class="container">
-   <div class="header">
-    <h1>Elektriko</h1>
-    <div class="online-count">18 ONLINE</div>
-   </div>
+</head>
+<body>
+  <header class="topbar">
+    <h1>IPTV</h1>
+    <input id="search" type="search" placeholder="Hanapin channel..." />
+  </header>
 
-   <div class="video-container">
-    <!-- Shaka Player will use this video element -->
-    <video id="video" data-shaka-player preload="auto" controls></video>
-   </div>
+  <main class="layout">
+    <aside class="sidebar" id="channelList"></aside>
+    <section class="player-wrap">
+      <div class="video-container">
+        <video id="video" class="shaka-video" playsinline></video>
+        <div id="controls" class="shaka-controls-container"></div>
+      </div>
+      <div class="now-playing" id="nowPlaying">Walang napiling channel</div>
+      <div class="controls-extra">
+        <button id="chMinus">CH-</button>
+        <button id="playPause">⏯</button>
+        <button id="chPlus">CH+</button>
+        <input id="volume" type="range" min="0" max="1" step="0.05" class="volume-slider"/>
+      </div>
+    </section>
+  </main>
 
-   <div class="controls">
-    <button>Play</button>
-    <button>Stop</button>
-    <button>CH -</button>
-    <button>CH +</button>
-    <button>Fullscreen</button>
-   </div>
+  <footer class="bottombar">
+    <button id="reloadBtn">Reload playlist</button>
+    <select id="categoryFilter"><option value="">Lahat</option></select>
+  </footer>
 
-   <div class="search-bar">
-    <input type="text" placeholder="Search channel name / number...">
-   </div>
+  <script type="module">
+    const PLAYLIST_URL = "https://raw.githubusercontent.com/reiyhbit/iptv/refs/heads/main/lgtv.m3u";
+    const state = {channels:[],filtered:[],categories:new Set(),player:null,ui:null,currentIndex:0};
 
-   <div class="hide-drm">
-    <label><input type="checkbox"> Hide DRM channels</label>
-   </div>
-
-   <h2>Channels</h2>
-   <ul class="channel-list">
-    <li>
-     <div class="flex-row">
-      <img src="sdtv_logo.png" alt="SDTV Logo">
-      <span data-stream-url="https://webhop.live:443/live/juno123/juno123/19206.m3u8">Ch 5 SDTV PH</span>
-     </div>
-     <span class="heart">♡</span>
-    </li>
-    <li>
-     <div class="flex-row">
-      <img src="crave_logo.png" alt="Crave 1 Logo">
-      <span data-stream-url="https://webhop.live:443/live/juno123/juno123/19229.m3u8">Ch 6 Crave 1</span>
-     </div>
-     <span class="heart">♡</span>
-    </li>
-    <li>
-     <div class="flex-row">
-      <img src="pbs_kids_logo.png" alt="PBS Kids Logo">
-      <span data-stream-url="https://webhop.live:443/live/juno123/juno123/19247.m3u8">Ch 7 pbs kids</span>
-     </div>
-     <span class="heart">♡</span>
-    </li>
-    <li>
-     <div class="flex-row">
-      <img src="universal_movies_logo.png" alt="Universal Movies Logo">
-      <span data-stream-url="https://webhop.live:443/live/juno123/juno123/19253.m3u8">Ch 8 Universal Movies</span>
-     </div>
-     <span class="heart">♡</span>
-    </li>
-    <li>
-     <div class="flex-row">
-      <img src="crave_logo.png" alt="Crave 3 Logo">
-      <span data-stream-url="https://webhop.live:443/live/juno123/juno123/19255.m3u8">Ch 9 Crave 3</span>
-     </div>
-     <span class="heart">♡</span>
-    </li>
-    <li>
-     <div class="flex-row">
-      <img src="movies_action_logo.png" alt="Movies Action Logo">
-      <span data-stream-url="https://webhop.live:443/live/juno123/juno123/133702.m3u8">Ch 10 Movies Action</span>
-     </div>
-     <span class="heart">♡</span>
-    </li>
-    <!-- More channels -->
-   </ul>
-  </div>
-
-  <!-- Include Shaka Player -->
-  <script src="https://cdn.jsdelivr.net/npm/shaka-player/dist/shaka-player.ui.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player/dist/controls.css">
-
-  <script>
-   // JavaScript with Shaka Player
-   async function init() {
-    // Shaka Player settings
-    shaka.polyfill.installAll();
-    if (shaka.Player.isBrowserSupported()) {
-     // Initialize shaka player
-     initPlayer();
-    } else {
-     // Log error message
-     console.error('Browser not supported!');
-    }
-   }
-
-   async function initPlayer() {
-    // Get the video element
-    const video = document.getElementById('video');
-    const player = new shaka.Player(video);
-
-    // Install built-in polyfills to patch browser incompatibilities.
-    shaka.polyfill.installAll();
-
-    // Attach player to the window to make it easier to access in the console.
-    window.player = player;
-
-    // Listen for errors from the Player instance.
-    player.addEventListener('error', onErrorEvent);
-
-    // Channel list
-    const channelList = document.querySelector('.channel-list');
-
-    // Add event listener to channel list
-    channelList.addEventListener('click', function(e) {
-     if (e.target.closest('li')) {
-      const listItem = e.target.closest('li');
-      const streamUrl = listItem.querySelector('span').getAttribute('data-stream-url');
-      loadAndPlayStream(streamUrl);
-     }
-    });
-
-    // Function to load and play stream
-    async function loadAndPlayStream(streamUrl) {
-     try {
-      // Load the stream
-      await player.load(streamUrl);
-      console.log('The stream has been loaded!');
-     } catch (error) {
-      onError(error);
-     }
+    function parseM3U(text){
+      const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);const channels=[];
+      for(let i=0;i<lines.length;i++){if(lines[i].startsWith("#EXTINF")){
+        const info=lines[i],url=lines[i+1]||"",name=(info.match(/,(.*)$/)||["","Unknown"])[1].trim();
+        const getAttr=k=>(info.match(new RegExp(`${k}="([^"]*)"`,"i"))||[])[1]||"";
+        channels.push({name,url,logo:getAttr("tvg-logo"),group:getAttr("group-title")});i++;}}
+      return channels;
     }
 
-    // Error handling function
-    function onErrorEvent(event) {
-     onError(event.detail);
+    async function loadPlaylist(){
+      const res=await fetch(PLAYLIST_URL);const text=await res.text();
+      state.channels=parseM3U(text).filter(c=>c.url.startsWith("http"));state.filtered=[...state.channels];
+      state.categories=new Set(state.channels.map(c=>c.group).filter(Boolean));renderCategories();renderList();
+      if(state.channels.length>0){state.currentIndex=0;playChannel(state.channels[0]);} // auto-play first
     }
 
-    function onError(error) {
-     console.error('Error code:', error.code, 'object', error);
+    function renderCategories(){
+      const sel=document.getElementById("categoryFilter");sel.innerHTML="<option value=''>Lahat</option>";
+      [...state.categories].sort().forEach(cat=>{const o=document.createElement("option");o.value=cat;o.textContent=cat;sel.appendChild(o);});
     }
-   }
 
-   document.addEventListener('DOMContentLoaded', init);
-  </script>
- </body>
- </html>
+    function renderList(){
+      const wrap=document.getElementById("channelList");wrap.innerHTML="";
+      state.filtered.forEach((ch,idx)=>{const item=document.createElement("div");item.className="channel";item.onclick=()=>{state.currentIndex=idx;playChannel(ch)};
+        const logo=document.createElement("div");logo.className="logo";logo.textContent=ch.name.slice(0,2).toUpperCase();
+        if(ch.logo){const img=document.createElement("img");img.src=ch.logo;img.style.width="100%";img.style.height="100%";img.style.objectFit="cover";logo.textContent="";logo.appendChild(img);}
+        const meta=document.createElement("div");meta.className="meta";meta.innerHTML=`<div class='title'>${ch.name}</div><div class='cat'>${ch.group||""}</div>`;
+        item.appendChild(logo);item.appendChild(meta);wrap.appendChild(item);});
+    }
+
+    function initShaka(){
+      const video=document.getElementById("video");const player=new shaka.Player(video);
+      const ui=new shaka.ui.Overlay(player,document.getElementById("controls"),video);
+      ui.configure({addBigPlayButton:true});state.player=player;state.ui=ui;
+    }
+
+    async function playChannel(ch){
+      const np=document.getElementById("nowPlaying");np.textContent=`Naglo-load: ${ch.name}`;
+      try{await state.player.load(ch.url);np.textContent=`Now Playing: ${ch.name}`;document.getElementById("video").play();}
+      catch(err){np.textContent=`Error: ${err.message}`;}
+    }
+
+    function wireEvents(){
+      document.getElementById("search").addEventListener("input",e=>{
+        const q=e.target.value.toLowerCase();state.filtered=state.channels.filter(c=>c.name.toLowerCase().includes(q)||(c.group||"").toLowerCase().includes(q));renderList();
+      });
+      document.getElementById("categoryFilter").addEventListener("change",e=>{
+        const val=e.target.value;state.filtered=state.channels.filter(c=>!val||c.group===val);renderList();
+      });
+      document.getElementById("reloadBtn").onclick=loadPlaylist;
+      document.getElementById("chPlus").onclick=()=>{if(state.currentIndex<state.channels.length-1){state.currentIndex++;playChannel(state.channels[state.currentIndex]);}};
+      document.getElementById("chMinus").onclick=()=>{if(state.currentIndex>0){state.currentIndex--;playChannel(state.channels[state.currentIndex]);}};
+      document.getElementById("playPause").onclick=()=>{
+        const v=document.getElementById("video");if(v.paused){v.play();}else{v.pause();}
+      };
