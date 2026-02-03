@@ -1,5 +1,4 @@
-
-<!DOCTYPE html>
+"<!DOCTYPE html>
 <html lang=\"en\">
 <head>
     <meta charset=\"UTF-8\">
@@ -9,6 +8,9 @@
     <!-- Shaka Player CDN -->
     <script src=\"https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.9/shaka-player.compiled.min.js\"></script>
     
+    <link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap\" rel=\"stylesheet\">
+    <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css\">
+    
     <style>
         * {
             margin: 0;
@@ -17,11 +19,24 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0e1a;
+            color: #e5e7eb;
             min-height: 100vh;
             overflow-x: hidden;
+        }
+
+        .time-display {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem 1.5rem;
+            font-size: 1.2rem;
+            color: #9ca3af;
+            font-weight: 500;
+            z-index: 100;
+            letter-spacing: 0.5px;
         }
 
         .container {
@@ -29,14 +44,101 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            padding-top: 3.5rem;
         }
 
-        /* Video Section - 50% */
+        /* Top Controls */
+        .top-controls {
+            padding: 1rem 1.5rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-btn-top {
+            background: #1e293b;
+            border: none;
+            color: #e5e7eb;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .control-btn-top.primary {
+            background: #14b8a6;
+            color: #ffffff;
+        }
+
+        .control-btn-top:hover {
+            background: #334155;
+            border-color: rgba(20, 184, 166, 0.3);
+        }
+
+        .control-btn-top.primary:hover {
+            background: #0d9488;
+        }
+
+        .volume-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: #1e293b;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            min-width: 180px;
+        }
+
+        .volume-icon {
+            color: #14b8a6;
+            font-size: 1rem;
+        }
+
+        #volume-slider {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, #14b8a6 0%, #14b8a6 50%, #475569 50%, #475569 100%);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #14b8a6;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(20, 184, 166, 0.5);
+        }
+
+        #volume-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #14b8a6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(20, 184, 166, 0.5);
+        }
+
+        /* Video Section */
         .video-section {
             height: 50vh;
-            background: #000;
+            background: #000000;
             position: relative;
-            border-bottom: 3px solid #3b82f6;
+            border: 3px solid #1e293b;
+            border-radius: 12px;
+            margin: 0 1.5rem;
+            overflow: hidden;
         }
 
         #video-container {
@@ -49,24 +151,7 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            background: #000;
-        }
-
-        .video-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: 1rem;
-            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
-            z-index: 10;
-        }
-
-        .channel-info {
-            color: #fff;
-            font-size: 1.2rem;
-            font-weight: 600;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            background: #000000;
         }
 
         .loading {
@@ -74,131 +159,296 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 1.2rem;
-            color: #3b82f6;
             z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
         }
 
-        /* Controls Section */
-        .controls {
-            background: rgba(15, 23, 42, 0.95);
-            padding: 1rem;
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(20, 184, 166, 0.1);
+            border-top-color: #14b8a6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #14b8a6;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        /* Channel Info Section */
+        .channel-info-section {
+            padding: 1.5rem;
             display: flex;
-            gap: 0.5rem;
-            justify-content: center;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .channel-details {
+            flex: 1;
+        }
+
+        .channel-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .channel-subtitle {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-bottom: 0.75rem;
+        }
+
+        .channel-stats {
+            display: flex;
+            gap: 1rem;
             align-items: center;
             flex-wrap: wrap;
-            border-bottom: 2px solid #1e293b;
         }
 
-        .control-btn {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            border: none;
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+
+        .age-badge {
+            background: #dc2626;
             color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-size: 1rem;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .online-indicator {
+            border: 2px solid #14b8a6;
+            border-radius: 50%;
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .online-count {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .online-label {
+            font-size: 0.75rem;
+            color: #14b8a6;
+            font-weight: 600;
+        }
+
+        /* Theme selector */
+        .theme-selector {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin: 0 1.5rem 1rem;
+        }
+
+        .theme-label {
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+
+        .theme-select {
+            background: #1e293b;
+            color: #e5e7eb;
+            border: 2px solid #334155;
+            border-radius: 50px;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* Filter Buttons */
+        .filter-section {
+            padding: 0 1.5rem 1rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: 2px solid #334155;
+            color: #9ca3af;
+            padding: 0.6rem 1.25rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
         }
 
-        .control-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(59, 130, 246, 0.4);
-            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        .filter-btn:hover {
+            border-color: #14b8a6;
+            color: #e5e7eb;
         }
 
-        .control-btn:active {
-            transform: translateY(0);
+        .filter-btn.active {
+            background: #14b8a6;
+            border-color: #14b8a6;
+            color: #ffffff;
         }
 
-        .volume-control {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: rgba(30, 41, 59, 0.8);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
+        .filter-btn i {
+            margin-right: 0.25rem;
         }
 
-        .volume-control label {
-            font-size: 0.9rem;
-            font-weight: 500;
+        /* Search Bar */
+        .search-section {
+            padding: 0 1.5rem 1rem;
         }
 
-        #volume-slider {
-            width: 100px;
-            cursor: pointer;
+        .search-input {
+            width: 100%;
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 50px;
+            padding: 0.85rem 1.5rem;
+            font-size: 0.95rem;
+            color: #e5e7eb;
+            outline: none;
+            transition: all 0.3s ease;
         }
 
-        /* Channel List Section - 50% */
+        .search-input::placeholder {
+            color: #64748b;
+        }
+
+        .search-input:focus {
+            border-color: #14b8a6;
+            background: #273548;
+        }
+
+        /* Channel List Section */
         .channel-section {
-            height: calc(50vh - 70px);
+            flex: 1;
             overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .channel-section h2 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #3b82f6;
-            text-align: center;
+            padding: 0 1.5rem 1.5rem;
         }
 
         .channel-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(1, 1fr);
             gap: 0.75rem;
         }
 
         .channel-item {
-            background: rgba(30, 41, 59, 0.8);
+            background: #1e293b;
             padding: 1rem;
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
-            backdrop-filter: blur(10px);
-            text-align: center;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
 
         .channel-item:hover {
-            transform: translateY(-4px);
-            background: rgba(51, 65, 85, 0.9);
-            border-color: #3b82f6;
-            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+            background: #273548;
+            border-color: #14b8a6;
+            transform: translateX(4px);
         }
 
         .channel-item.active {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            border-color: #60a5fa;
-            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.5);
+            background: #14b8a6;
+            border-color: #0d9488;
         }
 
-        .channel-number {
-            font-size: 0.8rem;
-            color: #94a3b8;
-            margin-bottom: 0.25rem;
+        .channel-logo {
+            width: 60px;
+            height: 60px;
+            background: #ffffff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
         }
 
-        .channel-item.active .channel-number {
-            color: #e0e7ff;
+        .channel-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .channel-logo-placeholder {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .channel-content {
+            flex: 1;
+            min-width: 0;
         }
 
         .channel-name {
             font-size: 1rem;
-            font-weight: 600;
-            color: #e2e8f0;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 0.25rem;
             word-break: break-word;
+        }
+
+        .channel-id {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .channel-item.active .channel-id {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .channel-favorite {
+            color: #64748b;
+            font-size: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .channel-item:hover .channel-favorite {
+            color: #ef4444;
+        }
+
+        .channel-favorite.active {
+            color: #ef4444;
         }
 
         .error-message {
             color: #ef4444;
             text-align: center;
-            padding: 2rem;
-            font-size: 1.1rem;
+            padding: 3rem 1rem;
+            font-size: 1rem;
+            font-weight: 600;
         }
 
         /* Scrollbar Styling */
@@ -207,58 +457,116 @@
         }
 
         .channel-section::-webkit-scrollbar-track {
-            background: rgba(30, 41, 59, 0.5);
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 4px;
         }
 
         .channel-section::-webkit-scrollbar-thumb {
-            background: #3b82f6;
+            background: #14b8a6;
             border-radius: 4px;
         }
 
         .channel-section::-webkit-scrollbar-thumb:hover {
-            background: #2563eb;
+            background: #0d9488;
         }
 
-        /* Responsive - Tablet and larger */
+        /* Responsive */
         @media (min-width: 768px) {
             .channel-grid {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
         @media (min-width: 1024px) {
             .channel-grid {
-                grid-template-columns: repeat(4, 1fr);
+                grid-template-columns: repeat(3, 1fr);
             }
         }
     </style>
 </head>
 <body>
-    <div class=\"container\">
-        <!-- Video Section (50%) -->
-        <div class=\"video-section\">
-            <div id=\"video-container\">
-                <div class=\"video-overlay\">
-                    <div class=\"channel-info\" id=\"current-channel\">Select a channel to start</div>
-                </div>
-                <div class=\"loading\" id=\"loading\">Loading...</div>
-                <video id=\"video\" autoplay></video>
-            </div>
-        </div>
+    <!-- Time Display -->
+    <div class=\"time-display\" id=\"time-display\">12:36:15 PM</div>
 
-        <!-- Controls -->
-        <div class=\"controls\">
-            <button class=\"control-btn\" id=\"prev-btn\" onclick=\"previousChannel()\">⏮ Previous</button>
-            <button class=\"control-btn\" id=\"next-btn\" onclick=\"nextChannel()\">Next ⏭</button>
-            <div class=\"volume-control\">
-                <label for=\"volume-slider\">🔊</label>
+    <div class=\"container\">
+        <!-- Top Controls -->
+        <div class=\"top-controls\">
+            <button class=\"control-btn-top primary\" id=\"play-btn\" onclick=\"togglePlay()\">Play</button>
+            <button class=\"control-btn-top\" id=\"stop-btn\" onclick=\"stopPlayback()\">Stop</button>
+            <button class=\"control-btn-top\" onclick=\"previousChannel()\">CH -</button>
+            <button class=\"control-btn-top\" onclick=\"nextChannel()\">CH +</button>
+            <button class=\"control-btn-top\" onclick=\"toggleFullscreen()\">Fullscreen</button>
+            <div class=\"volume-wrapper\">
+                <i class=\"fas fa-volume-up volume-icon\" id=\"volume-icon\"></i>
                 <input type=\"range\" id=\"volume-slider\" min=\"0\" max=\"100\" value=\"50\" oninput=\"changeVolume(this.value)\">
             </div>
         </div>
 
-        <!-- Channel List Section (50%) -->
+        <!-- Video Section -->
+        <div class=\"video-section\">
+            <div id=\"video-container\">
+                <div class=\"loading\" id=\"loading\" style=\"display: none;\">
+                    <div class=\"spinner\"></div>
+                    <div class=\"loading-text\">Loading channel...</div>
+                </div>
+                <video id=\"video\" autoplay></video>
+            </div>
+        </div>
+
+        <!-- Channel Info -->
+        <div class=\"channel-info-section\">
+            <div class=\"channel-details\">
+                <div class=\"channel-title\" id=\"current-channel-name\">Select a channel to start</div>
+                <div class=\"channel-subtitle\" id=\"current-channel-subtitle\">HLS, Converge, Cignal & Radio</div>
+                <div class=\"channel-stats\">
+                    <div class=\"stat-item\">
+                        <span class=\"age-badge\">18</span>
+                        <span>0 MAX</span>
+                    </div>
+                    <div class=\"stat-item\">
+                        <span class=\"age-badge\">18</span>
+                        <span>MAX</span>
+                    </div>
+                </div>
+            </div>
+            <div class=\"online-indicator\">
+                <div class=\"online-count\" id=\"online-count\">0</div>
+                <div class=\"online-label\">ONLINE</div>
+            </div>
+        </div>
+
+        <!-- Theme Selector -->
+        <div class=\"theme-selector\">
+            <span class=\"theme-label\">Theme:</span>
+            <select class=\"theme-select\">
+                <option>Default</option>
+                <option>Dark</option>
+                <option>Light</option>
+            </select>
+        </div>
+
+        <!-- Filters -->
+        <div class=\"filter-section\">
+            <button class=\"filter-btn active\" data-filter=\"all\" onclick=\"filterChannels('all')\">HLS</button>
+            <button class=\"filter-btn\" data-filter=\"mixed\" onclick=\"filterChannels('mixed')\">Mixed</button>
+            <button class=\"filter-btn\" data-filter=\"cignal\" onclick=\"filterChannels('cignal')\">Cignal</button>
+            <button class=\"filter-btn\" data-filter=\"radio\" onclick=\"filterChannels('radio')\">Radio</button>
+            <button class=\"filter-btn\" data-filter=\"now\" onclick=\"filterChannels('now')\">Now</button>
+            <button class=\"filter-btn\" data-filter=\"recent\" onclick=\"filterChannels('recent')\">
+                <i class=\"fas fa-clock\"></i> Recent
+            </button>
+            <button class=\"filter-btn\" onclick=\"toggleFavorites()\">
+                <i class=\"fas fa-heart\"></i>
+            </button>
+        </div>
+
+        <!-- Search -->
+        <div class=\"search-section\">
+            <input type=\"text\" class=\"search-input\" id=\"search-input\" placeholder=\"Search channel...\" oninput=\"searchChannels(this.value)\">
+        </div>
+
+        <!-- Channel List -->
         <div class=\"channel-section\">
-            <h2>📺 Channels</h2>
             <div class=\"channel-grid\" id=\"channel-grid\">
                 <div class=\"error-message\">Loading channels...</div>
             </div>
@@ -273,13 +581,29 @@
         let player;
         let channels = [];
         let currentChannelIndex = -1;
+        let isPlaying = false;
+        let allChannels = [];
+        let currentFilter = 'all';
+
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = hours % 12 || 12;
+            document.getElementById('time-display').textContent = 
+                `${displayHours}:${minutes}:${seconds} ${ampm}`;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
 
         // Initialize Shaka Player
         function initPlayer() {
             const video = document.getElementById('video');
             player = new shaka.Player(video);
 
-            // Configure DRM with Widevine
             player.configure({
                 drm: {
                     servers: {
@@ -288,11 +612,9 @@
                 }
             });
 
-            // Error handling
             player.addEventListener('error', onErrorEvent);
-            
-            // Set initial volume
             video.volume = 0.5;
+            updateVolumeSlider();
         }
 
         // Parse M3U playlist
@@ -310,16 +632,18 @@
                     const line = lines[i].trim();
                     
                     if (line.startsWith('#EXTINF:')) {
-                        // Parse channel info
                         const nameMatch = line.match(/,(.+)$/);
                         const name = nameMatch ? nameMatch[1].trim() : `Channel ${parsedChannels.length + 1}`;
                         
+                        const logoMatch = line.match(/tvg-logo=\"([^\"]+)\"/);
+                        const logo = logoMatch ? logoMatch[1] : null;
+                        
                         currentChannel = {
                             name: name,
+                            logo: logo,
                             url: null
                         };
                     } else if (line && !line.startsWith('#') && currentChannel) {
-                        // This is the URL line
                         currentChannel.url = line;
                         parsedChannels.push(currentChannel);
                         currentChannel = null;
@@ -327,7 +651,9 @@
                 }
                 
                 channels = parsedChannels;
+                allChannels = [...parsedChannels];
                 renderChannels();
+                updateOnlineCount();
                 
                 if (channels.length > 0) {
                     playChannel(0);
@@ -344,70 +670,172 @@
             const grid = document.getElementById('channel-grid');
             
             if (channels.length === 0) {
-                grid.innerHTML = '<div class=\"error-message\">No channels found in playlist</div>';
+                grid.innerHTML = '<div class=\"error-message\">No channels found</div>';
                 return;
             }
             
-            grid.innerHTML = channels.map((channel, index) => `
-                <div class=\"channel-item\" onclick=\"playChannel(${index})\" id=\"channel-${index}\">
-                    <div class=\"channel-number\">#${index + 1}</div>
-                    <div class=\"channel-name\">${channel.name}</div>
-                </div>
-            `).join('');
+            grid.innerHTML = channels.map((channel, index) => {
+                const actualIndex = allChannels.findIndex(ch => ch.url === channel.url);
+                const initials = channel.name.substring(0, 2).toUpperCase();
+                
+                return `
+                    <div class=\"channel-item\" onclick=\"playChannel(${actualIndex})\" id=\"channel-${actualIndex}\">
+                        <div class=\"channel-logo\">
+                            ${channel.logo ? 
+                                `<img src=\"${channel.logo}\" alt=\"${channel.name}\" onerror=\"this.parentElement.innerHTML='<span class=\\'channel-logo-placeholder\\'>${initials}</span>'\">` : 
+                                `<span class=\"channel-logo-placeholder\">${initials}</span>`
+                            }
+                        </div>
+                        <div class=\"channel-content\">
+                            <div class=\"channel-name\">${channel.name}</div>
+                            <div class=\"channel-id\">${channel.name.toLowerCase().replace(/\s+/g, '')}</div>
+                        </div>
+                        <i class=\"fas fa-heart channel-favorite\"></i>
+                    </div>
+                `;
+            }).join('');
         }
 
         // Play channel
         async function playChannel(index) {
-            if (index < 0 || index >= channels.length) return;
+            if (index < 0 || index >= allChannels.length) return;
             
             currentChannelIndex = index;
-            const channel = channels[index];
+            const channel = allChannels[index];
             
-            // Update UI
             document.querySelectorAll('.channel-item').forEach(item => {
                 item.classList.remove('active');
             });
-            document.getElementById(`channel-${index}`).classList.add('active');
-            document.getElementById('current-channel').textContent = channel.name;
-            document.getElementById('loading').style.display = 'block';
+            const channelElement = document.getElementById(`channel-${index}`);
+            if (channelElement) {
+                channelElement.classList.add('active');
+                channelElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
             
-            // Scroll to active channel
-            document.getElementById(`channel-${index}`).scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center' 
-            });
+            document.getElementById('current-channel-name').textContent = channel.name;
+            document.getElementById('loading').style.display = 'flex';
             
             try {
                 await player.load(channel.url);
                 document.getElementById('loading').style.display = 'none';
-                console.log('Playing:', channel.name);
+                isPlaying = true;
+                updatePlayButton();
             } catch (error) {
                 console.error('Error loading channel:', error);
-                document.getElementById('loading').textContent = 'Error loading channel';
-                setTimeout(() => {
-                    document.getElementById('loading').style.display = 'none';
-                }, 2000);
+                document.getElementById('loading').style.display = 'none';
             }
         }
 
-        // Next channel
+        // Next/Previous channel
         function nextChannel() {
-            if (channels.length === 0) return;
-            const nextIndex = (currentChannelIndex + 1) % channels.length;
+            if (allChannels.length === 0) return;
+            const nextIndex = (currentChannelIndex + 1) % allChannels.length;
             playChannel(nextIndex);
         }
 
-        // Previous channel
         function previousChannel() {
-            if (channels.length === 0) return;
-            const prevIndex = currentChannelIndex - 1 < 0 ? channels.length - 1 : currentChannelIndex - 1;
+            if (allChannels.length === 0) return;
+            const prevIndex = currentChannelIndex - 1 < 0 ? allChannels.length - 1 : currentChannelIndex - 1;
             playChannel(prevIndex);
         }
 
-        // Change volume
+        // Toggle play/pause
+        function togglePlay() {
+            const video = document.getElementById('video');
+            if (video.paused) {
+                video.play();
+                isPlaying = true;
+            } else {
+                video.pause();
+                isPlaying = false;
+            }
+            updatePlayButton();
+        }
+
+        function updatePlayButton() {
+            const btn = document.getElementById('play-btn');
+            btn.textContent = isPlaying ? 'Pause' : 'Play';
+        }
+
+        // Stop playback
+        function stopPlayback() {
+            const video = document.getElementById('video');
+            video.pause();
+            video.currentTime = 0;
+            isPlaying = false;
+            updatePlayButton();
+        }
+
+        // Fullscreen
+        function toggleFullscreen() {
+            const videoContainer = document.getElementById('video-container');
+            if (!document.fullscreenElement) {
+                videoContainer.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Volume control
         function changeVolume(value) {
             const video = document.getElementById('video');
             video.volume = value / 100;
+            updateVolumeSlider();
+            updateVolumeIcon(value);
+        }
+
+        function updateVolumeSlider() {
+            const video = document.getElementById('video');
+            const slider = document.getElementById('volume-slider');
+            const value = video.volume * 100;
+            slider.style.background = `linear-gradient(to right, #14b8a6 0%, #14b8a6 ${value}%, #475569 ${value}%, #475569 100%)`;
+        }
+
+        function updateVolumeIcon(value) {
+            const icon = document.getElementById('volume-icon');
+            if (value == 0) {
+                icon.className = 'fas fa-volume-mute volume-icon';
+            } else if (value < 50) {
+                icon.className = 'fas fa-volume-down volume-icon';
+            } else {
+                icon.className = 'fas fa-volume-up volume-icon';
+            }
+        }
+
+        // Search channels
+        function searchChannels(query) {
+            const filtered = allChannels.filter(channel => 
+                channel.name.toLowerCase().includes(query.toLowerCase())
+            );
+            channels = filtered;
+            renderChannels();
+        }
+
+        // Filter channels
+        function filterChannels(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.dataset.filter === filter) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // For demo purposes, show all channels
+            channels = [...allChannels];
+            renderChannels();
+        }
+
+        // Toggle favorites
+        function toggleFavorites() {
+            // Placeholder for favorites functionality
+            alert('Favorites feature coming soon!');
+        }
+
+        // Update online count
+        function updateOnlineCount() {
+            document.getElementById('online-count').textContent = channels.length;
         }
 
         // Error handler
@@ -415,9 +843,8 @@
             console.error('Error code', event.detail.code, 'object', event.detail);
         }
 
-        // Initialize on page load
+        // Initialize
         async function init() {
-            // Check if browser supports Shaka Player
             if (!shaka.Player.isBrowserSupported()) {
                 console.error('Browser not supported!');
                 document.getElementById('channel-grid').innerHTML = 
@@ -429,10 +856,7 @@
             await parseM3U();
         }
 
-        // Start everything when DOM is ready
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
-"
-Observation: Create successful: /app/iptv-player.html
